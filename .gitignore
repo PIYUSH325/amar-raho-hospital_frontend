@@ -1,0 +1,17 @@
+# dependency directories
+**/node_modules/
+
+# build outputs
+**/dist/
+
+# local env files
+**/.env
+**/.env.local
+
+# logs
+*.log
+npm-debug.log*
+
+# editor files
+.vscode/
+.idea/
