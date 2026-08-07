@@ -10,6 +10,9 @@ import Testimonial from './pages/Testimonial';
 import Appointment from './pages/Appointment';
 import Contact from './pages/Contact';
 import NotFound from './pages/NotFound';
+import AdminDashboard from './pages/AdminDashboard';
+import PatientDashboard from './pages/PatientDashboard';
+import DoctorDashboard from './pages/DoctorDashboard';
 
 // Auth Imports
 import Login from './pages/Login';
@@ -17,6 +20,7 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
+
 
 // Stylesheets
 import './assets/css/bootstrap.min.css';
@@ -40,6 +44,30 @@ export const App: React.FC = () => {
               element={
                 <ProtectedRoute>
                   <Appointment />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <PatientDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/doctor-portal" 
+              element={
+                <ProtectedRoute>
+                  <DoctorDashboard />
                 </ProtectedRoute>
               } 
             />

@@ -5,53 +5,50 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
 
 export const loginUser = async (email: string, password: string): Promise<User> => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/posts`, {
-      email,
-      password,
-    });
+    const response = await axios.post(`${API_BASE_URL}/auth/login`, { email, password });
+    const { token, user } = response.data;
     
-    if (password.length < 4) {
-      throw new Error('Invalid credentials. Password too short.');
-    }
+    localStorage.setItem('hospital_token', token);
 
     return {
-      id: `usr_${response.data.id || Math.floor(Math.random() * 1000)}`,
-      name: email.split('@')[0].toUpperCase(),
-      email: email,
+      id: user.id || user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role
     };
   } catch (error: any) {
     console.error('API Error logging in:', error);
-    throw new Error(error.message || 'Authentication failed. Please verify your credentials.');
+    const errorMsg = error.response?.data?.message || 'Authentication failed.';
+    throw new Error(errorMsg);
   }
 };
 
 export const registerUser = async (name: string, email: string, password: string): Promise<User> => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/posts`, {
-      name,
-      email,
-      password,
-    });
+    const response = await axios.post(`${API_BASE_URL}/auth/register`, { name, email, password });
+    const { token, user } = response.data;
+    
+    localStorage.setItem('hospital_token', token);
 
     return {
-      id: `usr_${response.data.id || Math.floor(Math.random() * 1000)}`,
-      name: name,
-      email: email,
+      id: user.id || user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role
     };
   } catch (error: any) {
     console.error('API Error registering user:', error);
-    throw new Error(error.message || 'Registration failed. Please check input parameters.');
+    const errorMsg = error.response?.data?.message || 'Registration failed.';
+    throw new Error(errorMsg);
   }
 };
 
 export const forgotUserPassword = async (email: string): Promise<any> => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/posts`, {
-      email,
-    });
+    const response = await axios.post(`${API_BASE_URL}/auth/forgot-password`, { email });
     return response.data;
   } catch (error: any) {
     console.error('API Error dispatching recovery mail:', error);
-    throw new Error(error.message || 'Failed to dispatch recovery link.');
+    throw new Error(error.response?.data?.message || 'Failed to dispatch recovery link.');
   }
 };

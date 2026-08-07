@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import ScrollReveal from './ScrollReveal';
 import { submitAppointment } from '../services/api';
 import { AppointmentData } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 export const AppointmentForm: React.FC = () => {
   const [formData, setFormData] = useState<AppointmentData>({
@@ -9,10 +11,39 @@ export const AppointmentForm: React.FC = () => {
     email: '',
     mobile: '',
     doctor: 'Choose Doctor',
+    doctorRef: '',
     date: '',
     time: '',
     problem: '',
   });
+
+  const [doctorsList, setDoctorsList] = useState<any[]>([]);
+  const { user } = useAuth();
+  
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+  // Fetch verified doctors dynamically from the backend database
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/doctors`)
+      .then((res) => {
+        setDoctorsList(res.data.data);
+      })
+      .catch((err) => {
+        console.error('Failed to load doctors list:', err);
+      });
+  }, []);
+
+  // Pre-fill fields if user is already logged in
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        name: user.name || prev.name,
+        email: user.email || prev.email,
+        // mobile: user.mobile || prev.mobile
+      }));
+    }
+  }, [user]);
 
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'danger'; text: string } | null>(null);
@@ -22,6 +53,17 @@ export const AppointmentForm: React.FC = () => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  // Handles updating both doctor name string and doctor user ID Reference
+  const handleDoctorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedDocName = e.target.value;
+    const selectedDoc = doctorsList.find((d) => d.user.name === selectedDocName);
+    setFormData((prev) => ({
+      ...prev,
+      doctor: selectedDocName,
+      doctorRef: selectedDoc ? selectedDoc.user._id : '',
     }));
   };
 
@@ -39,10 +81,11 @@ export const AppointmentForm: React.FC = () => {
       await submitAppointment(formData);
       setStatusMsg({ type: 'success', text: 'Appointment booked successfully!' });
       setFormData({
-        name: '',
-        email: '',
-        mobile: '',
+        name: user?.name || '',
+        email: user?.email || '',
+        mobile:  '',
         doctor: 'Choose Doctor',
+        doctorRef: '',
         date: '',
         time: '',
         problem: '',
@@ -129,15 +172,17 @@ export const AppointmentForm: React.FC = () => {
                   <div className="col-12 col-sm-6">
                     <select 
                       name="doctor"
-                      className="form-select border-0" 
+                      className="form-select border-0 text-capitalize" 
                       style={{ height: '55px' }}
                       value={formData.doctor}
-                      onChange={handleChange}
+                      onChange={handleDoctorChange}
                     >
                       <option disabled value="Choose Doctor">Choose Doctor</option>
-                      <option value="doctor-1">Doctor 1</option>
-                      <option value="doctor-2">Doctor 2</option>
-                      <option value="doctor-3">Doctor 3</option>
+                      {doctorsList.map((doc) => (
+                        <option key={doc._id} value={doc.user.name}>
+                          {doc.user.name} ({doc.specialization})
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="col-12 col-sm-6">

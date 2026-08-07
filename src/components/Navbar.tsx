@@ -96,6 +96,16 @@ export const Navbar: React.FC = () => {
               <NavLink to="/404" className="dropdown-item" onClick={closeMenu}>404 Page</NavLink>
             </div>
           </div>
+            {/* Dashboard Link for Logged In Patient */}
+            {user && user.role === 'patient' && (
+              <NavLink 
+                to="/dashboard" 
+                className={({ isActive }) => `nav-item nav-link ${isActive ? 'active' : ''}`}
+                onClick={closeMenu}
+              >
+                Dashboard
+              </NavLink>
+            )}
           <NavLink 
             to="/contact" 
             className={({ isActive }) => `nav-item nav-link ${isActive ? 'active' : ''}`}
@@ -122,6 +132,24 @@ export const Navbar: React.FC = () => {
                 <i className="fa fa-user-circle me-1"></i> {user.name}
               </a>
               <div className={`dropdown-menu rounded-0 rounded-bottom m-0 ${isUserDropdownOpen ? 'show' : ''}`}>
+                {/* Render Admin Panel link if user is admin */}
+                {user && user.role === 'admin' && (
+                  <NavLink to="/admin" className="dropdown-item" onClick={closeMenu}>
+                    <i className="fa fa-tachometer-alt me-2"></i> Admin Panel
+                  </NavLink>
+                )}
+                {/* Render Doctor Panel link if user is doctor */}
+                {user && user.role === 'doctor' && (
+                  <NavLink to="/doctor-portal" className="dropdown-item" onClick={closeMenu}>
+                    <i className="fa fa-user-md me-2"></i> Doctor Panel
+                  </NavLink>
+                )}
+                {/* Render Patient Dashboard link if user is patient */}
+                {user && user.role === 'patient' && (
+                  <NavLink to="/dashboard" className="dropdown-item" onClick={closeMenu}>
+                    <i className="fa fa-th-large me-2"></i> Dashboard
+                  </NavLink>
+                )}
                 <button 
                   className="dropdown-item text-danger border-0 bg-transparent" 
                   onClick={() => {

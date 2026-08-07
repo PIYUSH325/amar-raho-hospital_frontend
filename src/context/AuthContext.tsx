@@ -18,7 +18,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user session exists in localStorage
     const savedUser = localStorage.getItem('hospital_user');
     if (savedUser) {
       try {
@@ -68,6 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setUser(null);
     localStorage.removeItem('hospital_user');
+    localStorage.removeItem('hospital_token');
   };
 
   return (

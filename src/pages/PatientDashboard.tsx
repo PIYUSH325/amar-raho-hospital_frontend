@@ -1,0 +1,487 @@
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { Appointment, PatientProfile, MedicalRecord, Prescription } from '../types';
+
+export const PatientDashboard: React.FC = () => {
+  const { user, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState<'bookings' | 'profile' | 'records'>('bookings');
+  
+  // States
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [profile, setProfile] = useState<PatientProfile | null>(null);
+  const [records, setRecords] = useState<MedicalRecord[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  
+  const [reportTitle, setReportTitle] = useState('');
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [uploadingReport, setUploadingReport] = useState(false);
+  
+  const [loading, setLoading] = useState(true);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
+
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
+
+  const triggerError = (msg: string) => {
+    setErrorToast(msg);
+    setTimeout(() => setErrorToast(null), 4000);
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('hospital_token');
+      const headers = { Authorization: `Bearer ${token}` };
+
+      // Fetch Profile
+      try {
+        const profRes = await axios.get(`${API_BASE_URL}/patients/me`, { headers });
+        setProfile(profRes.data.data);
+      } catch (err) {
+        console.error('Failed to load profile details');
+      }
+
+      // Fetch Bookings
+      try {
+        const appRes = await axios.get(`${API_BASE_URL}/appointments/my`, { headers });
+        setAppointments(appRes.data.data);
+      } catch (err) {
+        console.error('Failed to load bookings');
+      }
+
+      // Fetch Records
+      try {
+        const recRes = await axios.get(`${API_BASE_URL}/medical-records`, { headers });
+        setRecords(recRes.data.data);
+      } catch (err) {
+        console.error('Failed to load medical records');
+      }
+
+      // Fetch Prescriptions
+      try {
+        const presRes = await axios.get(`${API_BASE_URL}/prescriptions`, { headers });
+        setPrescriptions(presRes.data.data);
+      } catch (err) {
+        console.error('Failed to load prescriptions');
+      }
+
+    } catch (error) {
+      console.error('Failed loading patient data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+    const handleReportUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reportFile || !reportTitle.trim()) {
+      triggerError('Please enter a title and select a report file.');
+      return;
+    }
+
+    setUploadingReport(true);
+    const formData = new FormData();
+    formData.append('title', reportTitle);
+    formData.append('reportFile', reportFile);
+
+    try {
+      const token = localStorage.getItem('hospital_token');
+      await axios.post(`${API_BASE_URL}/patients/upload-report`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      alert('Lab report uploaded successfully!');
+      setReportTitle('');
+      setReportFile(null);
+      fetchData(); // Refresh patient profile metadata to fetch new reports list
+    } catch (err: any) {
+      triggerError(err.response?.data?.message || 'Failed to upload report file.');
+    } finally {
+      setUploadingReport(false);
+    }
+  };
+
+  const handleCancelBooking = async (id: string) => {
+    if (!window.confirm('Are you sure you want to cancel this scheduled appointment?')) return;
+    try {
+      const token = localStorage.getItem('hospital_token');
+      await axios.put(`${API_BASE_URL}/appointments/${id}/cancel`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAppointments(appointments.map(app => app._id === id ? { ...app, status: 'Cancelled' } : app));
+    } catch (error: any) {
+      triggerError(error.response?.data?.message || 'Failed to cancel appointment');
+    }
+  };
+
+  const isProfileIncomplete = !profile?.mobile || !profile?.age || !profile?.gender;
+
+  return (
+    <div className="container-xxl py-5">
+      <div className="container">
+        
+        {errorToast && (
+          <div className="alert alert-danger position-fixed top-0 end-0 m-4 shadow-lg" style={{ zIndex: 1050 }}>
+            <i className="fa fa-exclamation-circle me-2"></i> {errorToast}
+          </div>
+        )}
+
+        <div className="row g-5">
+          
+          {/* Left Sidebar Layout */}
+          <div className="col-lg-3 col-md-4">
+            <div className="bg-light rounded-3 p-4 border shadow-sm text-center">
+              <div className="d-flex align-items-center justify-content-center rounded-circle bg-primary text-white mx-auto mb-3" style={{ width: '80px', height: '80px' }}>
+                <h3 className="m-0 text-white">{user?.name ? user.name.slice(0,2).toUpperCase() : 'PT'}</h3>
+              </div>
+              <h5 className="mb-1 fw-bold text-dark">{user?.name}</h5>
+              <p className="text-muted small mb-4">{user?.email}</p>
+              
+              <div className="nav flex-column nav-pills text-start">
+                <button 
+                  className={`nav-link border-0 text-start py-3 mb-2 rounded ${activeTab === 'bookings' ? 'active bg-primary text-white' : 'bg-transparent text-dark'}`}
+                  onClick={() => setActiveTab('bookings')}
+                >
+                  <i className="fa fa-calendar-alt me-2"></i> My Bookings
+                </button>
+                <button 
+                  className={`nav-link border-0 text-start py-3 mb-2 rounded ${activeTab === 'profile' ? 'active bg-primary text-white' : 'bg-transparent text-dark'}`}
+                  onClick={() => setActiveTab('profile')}
+                >
+                  <i className="fa fa-id-card me-2"></i> My Profile
+                </button>
+                <button 
+                  className={`nav-link border-0 text-start py-3 mb-2 rounded ${activeTab === 'records' ? 'active bg-primary text-white' : 'bg-transparent text-dark'}`}
+                  onClick={() => setActiveTab('records')}
+                >
+                  <i className="fa fa-notes-medical me-2"></i> Medical Records
+                </button>
+                <button 
+                  className="nav-link border-0 text-start text-danger py-3 bg-transparent rounded mt-4"
+                  onClick={logout}
+                >
+                  <i className="fa fa-sign-out-alt me-2"></i> Log Out
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Main Panel */}
+          <div className="col-lg-9 col-md-8">
+            <div className="bg-white p-4 border rounded-3 shadow-sm min-vh-50">
+              
+              {loading ? (
+                <div className="text-center py-5">
+                  <div className="spinner-border text-primary" role="status"></div>
+                  <p className="mt-2 text-muted">Loading your portal details...</p>
+                </div>
+              ) : (
+                <>
+                  {/* TAB 1: BOOKINGS LIST */}
+                  {activeTab === 'bookings' && (
+                    <div>
+                      <h3 className="mb-4 fw-bold text-dark">My Booked Appointments</h3>
+                      {appointments.length === 0 ? (
+                        <div className="text-center py-5 text-muted">
+                          <i className="fa fa-calendar-times fa-3x mb-3 text-muted"></i>
+                          <p>You have not booked any appointments yet.</p>
+                        </div>
+                      ) : (
+                        <div className="table-responsive">
+                          <table className="table table-hover align-middle">
+                            <thead className="table-light">
+                              <tr>
+                                <th>Doctor</th>
+                                <th>Date / Time</th>
+                                <th>Problem</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {appointments.map((app) => (
+                                <tr key={app._id}>
+                                  <td><span className="badge bg-light text-dark text-capitalize">{app.doctor}</span></td>
+                                  <td>
+                                    <div>{app.date}</div>
+                                    <small className="text-muted">{app.time}</small>
+                                  </td>
+                                  <td style={{ maxWidth: '250px', wordBreak: 'break-all' }}>{app.problem}</td>
+                                  <td>
+                                    <span className={`badge ${app.status === 'Approved' ? 'bg-success' : app.status === 'Scheduled' ? 'bg-primary' : app.status === 'Completed' ? 'bg-info' : 'bg-secondary'}`}>
+                                      {app.status}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    {(app.status === 'Scheduled' || app.status === 'Approved') && (
+                                      <button 
+                                        className="btn btn-sm btn-outline-danger"
+                                        onClick={() => handleCancelBooking(app._id)}
+                                      >
+                                        Cancel
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 2: READ ONLY PROFILE */}
+                  {activeTab === 'profile' && (
+                    <div>
+                      <h3 className="mb-4 fw-bold text-dark"><i className="fa fa-id-card text-primary me-2"></i>My Medical Card</h3>
+                      
+                      {isProfileIncomplete ? (
+                        <div className="alert alert-info py-4 rounded-3 border-0 shadow-sm mb-0">
+                          <h5 className="alert-heading fw-bold"><i className="fa fa-info-circle me-2"></i>Profile Pending Setup</h5>
+                          <p className="mb-0">Your demographic and vitals data card (Age, Blood Group, Address) will be filled out and verified by the hospital administrator or doctor during your consultation check-in.</p>
+                        </div>
+                      ) : (
+                        <div className="bg-light rounded-3 p-4 border">
+                          <div className="row g-4">
+                            <div className="col-md-6">
+                              <div className="text-muted small fw-medium mb-1"><i className="fa fa-user text-primary me-2"></i>Full Name</div>
+                              <h5 className="fw-bold text-dark mb-0">{user?.name}</h5>
+                            </div>
+                            <div className="col-md-6">
+                              <div className="text-muted small fw-medium mb-1"><i className="fa fa-envelope text-primary me-2"></i>Email Address</div>
+                              <h5 className="fw-bold text-dark mb-0">{user?.email}</h5>
+                            </div>
+                            <div className="col-md-6">
+                              <div className="text-muted small fw-medium mb-1"><i className="fa fa-phone text-primary me-2"></i>Phone Number</div>
+                              <h5 className="fw-bold text-dark mb-0">{profile?.mobile}</h5>
+                            </div>
+                            <div className="col-md-3">
+                              <div className="text-muted small fw-medium mb-1"><i className="fa fa-birthday-cake text-primary me-2"></i>Age</div>
+                              <h5 className="fw-bold text-dark mb-0">{profile?.age} Years</h5>
+                            </div>
+                            <div className="col-md-3">
+                              <div className="text-muted small fw-medium mb-1"><i className="fa fa-venus-mars text-primary me-2"></i>Gender</div>
+                              <h5 className="fw-bold text-dark mb-0">{profile?.gender}</h5>
+                            </div>
+                            <div className="col-md-6">
+                              <div className="text-muted small fw-medium mb-1"><i className="fa fa-tint text-primary me-2"></i>Blood Group</div>
+                              <h5 className="fw-bold text-dark mb-0">{profile?.bloodGroup || 'Not specified'}</h5>
+                            </div>
+                            <div className="col-md-6">
+                              <div className="text-muted small fw-medium mb-1"><i className="fa fa-ambulance text-primary me-2"></i>Emergency Contact</div>
+                              <h5 className="fw-bold text-dark mb-0">{profile?.emergencyContact || 'Not specified'}</h5>
+                            </div>
+                            <div className="col-12">
+                              <div className="text-muted small fw-medium mb-1"><i className="fa fa-map-marker-alt text-primary me-2"></i>Home Address</div>
+                              <p className="fw-bold text-dark mb-0" style={{ whiteSpace: 'pre-line' }}>{profile?.address}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 3: MEDICAL HISTORY AND PRESCRIPTIONS */}
+                  {activeTab === 'records' && (
+                    <div>
+                      <h3 className="mb-4 fw-bold text-dark">Consultation & Prescriptions Log</h3>
+                      
+                      <div className="row g-4">
+                        
+                        {/* EMR Checkups */}
+                        <div className="col-lg-6">
+                          <h5 className="fw-bold text-primary mb-3"><i className="fa fa-file-medical me-2"></i>Consultation History</h5>
+                          {records.length === 0 ? (
+                            <p className="text-muted bg-light p-3 rounded">No consultation summaries recorded.</p>
+                          ) : (
+                            records.map((rec) => (
+                              <div key={rec._id} className="card border shadow-sm mb-3">
+                                <div className="card-body">
+                                  <div className="d-flex justify-content-between mb-2">
+                                    <span className="badge bg-primary">Visit Checkup</span>
+                                    <small className="text-muted">{new Date(rec.visitDate).toLocaleDateString()}</small>
+                                  </div>
+                                  <h6 className="fw-bold text-dark mb-1">Diagnosis: {rec.diagnosis}</h6>
+                                  <p className="small text-muted mb-2">Treatment: {rec.treatmentPlan}</p>
+                                  {rec.notes && <div className="bg-light p-2 small text-muted rounded">Notes: {rec.notes}</div>}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        {/* Prescriptions */}
+                        {prescriptions.map((pres) => {
+                          const isUpdated = pres.updatedAt && pres.createdAt !== pres.updatedAt;
+                          return (
+                            <div key={pres._id} className="card border shadow-sm mb-3">
+                              <div className="card-body">
+                                <div className="d-flex justify-content-between mb-2">
+                                  <span className="badge bg-success">Rx Prescription</span>
+                                  <div className="text-end">
+                                    <small className="text-muted d-block">Issued: {new Date(pres.createdAt).toLocaleDateString()} at {new Date(pres.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
+                                    {isUpdated && (
+                                      <small className="text-danger fw-bold d-block">
+                                        <i className="fa fa-history me-1"></i> Updated: {new Date(pres.updatedAt).toLocaleDateString()} at {new Date(pres.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </small>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                <div className="table-responsive mb-2">
+                                  <table className="table table-sm table-borderless small mb-0">
+                                    <thead>
+                                      <tr className="border-bottom text-muted">
+                                        <th>Medicine</th>
+                                        <th>Dosage</th>
+                                        <th>Freq</th>
+                                        <th>Duration</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {pres.medicines.map((med, index) => (
+                                        <tr key={index}>
+                                          <td className="fw-bold text-dark">{med.name}</td>
+                                          <td>{med.dosage}</td>
+                                          <td>{med.frequency}</td>
+                                          <td>{med.duration}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                                {pres.instructions && (
+                                  <div className="bg-light p-2 small text-muted rounded mt-2">
+                                    <strong>Instructions:</strong> {pres.instructions}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {/* <div className="col-lg-6">
+                          <h5 className="fw-bold text-success mb-3"><i className="fa fa-file-prescription me-2"></i>My Prescriptions</h5>
+                          {prescriptions.length === 0 ? (
+                            <p className="text-muted bg-light p-3 rounded">No active prescriptions on file.</p>
+                          ) : (
+                            prescriptions.map((pres) => (
+                              <div key={pres._id} className="card border shadow-sm mb-3">
+                                <div className="card-body">
+                                  <div className="d-flex justify-content-between mb-2">
+                                    <span className="badge bg-success">Rx Prescription</span>
+                                    <small className="text-muted">{new Date(pres.createdAt).toLocaleDateString()}</small>
+                                  </div>
+                                  
+                                  <div className="table-responsive mb-2">
+                                    <table className="table table-sm table-borderless small mb-0">
+                                      <thead>
+                                        <tr className="border-bottom text-muted">
+                                          <th>Medicine</th>
+                                          <th>Dosage</th>
+                                          <th>Freq</th>
+                                          <th>Days</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {pres.medicines.map((med, index) => (
+                                          <tr key={index}>
+                                            <td className="fw-bold text-dark">{med.name}</td>
+                                            <td>{med.dosage}</td>
+                                            <td>{med.frequency}</td>
+                                            <td>{med.duration}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+
+                                  {pres.instructions && (
+                                    <div className="bg-light p-2 small text-muted rounded">
+                                      <strong>Instructions:</strong> {pres.instructions}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div> */}
+
+                        {/* LAB REPORTS CARD */}
+                        <div className="card border-0 shadow-sm p-4 mb-4">
+                          <h5 className="fw-bold mb-3 text-primary"><i className="fa fa-file-medical me-2"></i>My Lab Test Reports</h5>
+                          
+                          {/* Upload Form */}
+                          <form onSubmit={handleReportUpload} className="row g-3 mb-4 pb-4 border-bottom">
+                            <div className="col-md-6">
+                              <input 
+                                type="text" 
+                                className="form-control" 
+                                placeholder="Report Title (e.g. Dr Lal PathLabs Blood Test)" 
+                                value={reportTitle} 
+                                onChange={(e) => setReportTitle(e.target.value)} 
+                                required 
+                              />
+                            </div>
+                            <div className="col-md-4">
+                              <input 
+                                type="file" 
+                                className="form-control" 
+                                accept=".pdf,.png,.jpg,.jpeg" 
+                                onChange={(e) => setReportFile(e.target.files ? e.target.files[0] : null)} 
+                                required 
+                              />
+                            </div>
+                            <div className="col-md-2">
+                              <button className="btn btn-primary w-100" type="submit" disabled={uploadingReport}>
+                                {uploadingReport ? 'Uploading...' : 'Upload'}
+                              </button>
+                            </div>
+                          </form>
+
+                          {/* File List */}
+                          {profile?.reports?.length === 0 ? (
+                            <p className="text-muted small">No test reports uploaded yet.</p>
+                          ) : (
+                            <div className="list-group">
+                              {profile?.reports?.map((rep: any) => (
+                                <a 
+                                  key={rep._id} 
+                                  href={`${API_BASE_URL.replace('/api', '')}${rep.filePath}`} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  className="list-group-item list-group-item-action py-3 d-flex justify-content-between align-items-center"
+                                >
+                                  <div>
+                                    <h6 className="mb-0 fw-bold text-dark">{rep.title}</h6>
+                                    <small className="text-muted">Uploaded: {new Date(rep.uploadedAt).toLocaleDateString()}</small>
+                                  </div>
+                                  <span className="badge bg-primary px-3 py-2 rounded-pill">View PDF / Image</span>
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PatientDashboard;

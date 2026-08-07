@@ -5,20 +5,24 @@ import Spinner from './Spinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  adminOnly?: boolean; // Optional property to enforce admin role check
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, adminOnly = false }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
-    // Show spinner while checking authentication state
     return <Spinner />;
   }
 
   if (!user) {
-    // Redirect to login, storing the attempted URL in state for post-auth navigation
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // If page is for admins and user is not admin, redirect to Homepage
+  if (adminOnly && user.role !== 'admin') {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
