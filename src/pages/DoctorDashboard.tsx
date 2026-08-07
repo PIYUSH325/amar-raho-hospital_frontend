@@ -361,6 +361,29 @@ export const DoctorDashboard: React.FC = () => {
     }
   };
 
+  // Helper to scan medical records and highlight key metrics
+  const highlightMedicalVitals = (text: string) => {
+    if (!text) return <small className="text-muted">No scanned text available.</small>;
+    
+    const keywords = ['hemoglobin', 'sugar', 'wbc', 'platelet', 'cholesterol', 'vitamin', 'calcium', 'rbc', 'thyroid'];
+    const lines = text.split('\n');
+    
+    return lines.map((line, index) => {
+      const lowerLine = line.toLowerCase();
+      const hasKeyword = keywords.some(key => lowerLine.includes(key));
+      
+      return (
+        <div 
+          key={index} 
+          className={hasKeyword ? "bg-warning text-dark fw-bold px-2 rounded py-1 my-1" : "text-muted small"}
+          style={{ whiteSpace: 'pre-wrap' }}
+        >
+          {line}
+        </div>
+      );
+    });
+  };
+
   return (
     <div className="container-xxl py-5">
       <div className="container">
@@ -545,32 +568,43 @@ export const DoctorDashboard: React.FC = () => {
                       <label className="form-label fw-semibold">Special Instructions for Prescription</label>
                       <input type="text" className="form-control py-2" placeholder="e.g., Take after food" value={instructions} onChange={(e) => setInstructions(e.target.value)} />
                     </div>
-                                        {/* Patient Uploaded Reports Section */}
-                    <div className="col-12 mt-4 bg-light p-3 rounded border">
-                      <h6 className="fw-bold mb-2 text-danger"><i className="fa fa-file-pdf me-2"></i>Patient Uploaded Test Reports (Lal PathLabs etc.)</h6>
+
+                    {/* Patient Uploaded Reports & OCR Scanned Box */}
+                    <div className="col-12 mt-4 bg-light p-3 rounded border text-start">
+                      <h6 className="fw-bold mb-2 text-danger"><i className="fa fa-file-pdf me-2"></i>Patient Test Reports & OCR Vitals Check</h6>
                       {(() => {
                         const activePat = patients.find(p => p._id === selectedApp?.user);
                         if (!activePat?.metadata?.reports || activePat.metadata.reports.length === 0) {
-                          return <small className="text-muted d-block">No test reports uploaded by this patient.</small>;
+                          return <small className="text-muted d-block mt-1">No test reports uploaded by this patient.</small>;
                         }
                         return (
                           <div className="list-group list-group-flush mt-2">
                             {activePat.metadata.reports.map((rep: any) => (
-                              <a 
-                                key={rep._id} 
-                                href={`${API_BASE_URL.replace('/api', '')}${rep.filePath}`} 
-                                target="_blank" 
-                                rel="noreferrer" 
-                                className="list-group-item list-group-item-action py-2 d-flex justify-content-between align-items-center bg-transparent border-0 small px-0"
-                              >
-                                <span><i className="fa fa-file-medical me-2 text-primary"></i>{rep.title}</span>
-                                <span className="badge bg-primary px-3 py-2">View File</span>
-                              </a>
+                              <div key={rep._id} className="list-group-item bg-transparent border-0 px-0 pb-3 mb-2 border-bottom">
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                  <span><i className="fa fa-file-medical me-2 text-primary"></i><strong>{rep.title}</strong></span>
+                                  <a 
+                                    href={`${API_BASE_URL.replace('/api', '')}${rep.filePath}`} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    className="btn btn-xs btn-primary px-3 py-1 text-white small"
+                                  >
+                                    Open File
+                                  </a>
+                                </div>
+                                <div 
+                                  className="bg-white p-2 border rounded small" 
+                                  style={{ maxHeight: '150px', overflowY: 'auto', fontFamily: 'monospace' }}
+                                >
+                                  {highlightMedicalVitals(rep.extractedText)}
+                                </div>
+                              </div>
                             ))}
                           </div>
                         );
                       })()}
                     </div>
+
                     <div className="col-12 mt-4 pt-3 border-top">
                       <button className="btn btn-success px-5 py-3 fw-bold rounded shadow-sm" type="submit">
                         Complete Consultation & Check out
@@ -753,19 +787,28 @@ export const DoctorDashboard: React.FC = () => {
                         ) : (
                           <div className="list-group">
                             {selectedPatientHistory.metadata.reports.map((rep: any) => (
-                              <a 
-                                key={rep._id} 
-                                href={`${API_BASE_URL.replace('/api', '')}${rep.filePath}`} 
-                                target="_blank" 
-                                rel="noreferrer" 
-                                className="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3"
-                              >
-                                <div>
-                                  <h6 className="mb-0 fw-bold text-dark">{rep.title}</h6>
-                                  <small className="text-muted">Uploaded on: {new Date(rep.uploadedAt).toLocaleDateString()}</small>
+                              <div key={rep._id} className="list-group-item py-3">
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                  <div>
+                                    <h6 className="mb-0 fw-bold text-dark">{rep.title}</h6>
+                                    <small className="text-muted">Uploaded on: {new Date(rep.uploadedAt).toLocaleDateString()}</small>
+                                  </div>
+                                  <a 
+                                    href={`${API_BASE_URL.replace('/api', '')}${rep.filePath}`} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    className="btn btn-sm btn-outline-danger px-3"
+                                  >
+                                    Open File
+                                  </a>
                                 </div>
-                                <span className="badge bg-light text-dark border px-3 py-2">View Document</span>
-                              </a>
+                                <div 
+                                  className="bg-light p-2 border rounded mt-2" 
+                                  style={{ maxHeight: '180px', overflowY: 'auto', fontFamily: 'monospace' }}
+                                >
+                                  {highlightMedicalVitals(rep.extractedText)}
+                                </div>
+                              </div>
                             ))}
                           </div>
                         )}
