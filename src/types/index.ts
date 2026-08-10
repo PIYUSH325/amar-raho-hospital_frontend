@@ -25,10 +25,18 @@ export interface User {
   createdAt?: string;
 }
 
+export interface AIAnalysis {
+  condition: string;
+  alerts: string;
+  remedies: string;
+}
+
 export interface PatientReport {
   _id: string;
   title: string;
   filePath: string;
+  extractedText: string;
+  aiAnalysis?: AIAnalysis;
   uploadedAt: string;
 }
 

@@ -30,6 +30,7 @@ export const DoctorDashboard: React.FC = () => {
 
   // Active checkup modal state
   const [selectedApp, setSelectedApp] = useState<Appointment | null>(null);
+  const [selectedReportForAI, setSelectedReportForAI] = useState<any | null>(null);
   
   // Checkup form states
   const [diagnosis, setDiagnosis] = useState('');
@@ -583,14 +584,25 @@ export const DoctorDashboard: React.FC = () => {
                               <div key={rep._id} className="list-group-item bg-transparent border-0 px-0 pb-3 mb-2 border-bottom">
                                 <div className="d-flex justify-content-between align-items-center mb-2">
                                   <span><i className="fa fa-file-medical me-2 text-primary"></i><strong>{rep.title}</strong></span>
-                                  <a 
-                                    href={`${API_BASE_URL.replace('/api', '')}${rep.filePath}`} 
-                                    target="_blank" 
-                                    rel="noreferrer" 
-                                    className="btn btn-xs btn-primary px-3 py-1 text-white small"
-                                  >
-                                    Open File
-                                  </a>
+                                  <div className="d-flex align-items-center">
+                                    {rep.aiAnalysis && rep.aiAnalysis.condition && (
+                                      <button 
+                                        type="button"
+                                        className="btn btn-xs btn-outline-primary px-3 py-1 me-2 small"
+                                        onClick={() => setSelectedReportForAI(rep)}
+                                      >
+                                        <i className="fa fa-robot me-1"></i> AI Insights
+                                      </button>
+                                    )}
+                                    <a 
+                                      href={`${API_BASE_URL.replace('/api', '')}${rep.filePath}`} 
+                                      target="_blank" 
+                                      rel="noreferrer" 
+                                      className="btn btn-xs btn-primary px-3 py-1 text-white small"
+                                    >
+                                      Open File
+                                    </a>
+                                  </div>
                                 </div>
                                 <div 
                                   className="bg-white p-2 border rounded small" 
@@ -793,14 +805,25 @@ export const DoctorDashboard: React.FC = () => {
                                     <h6 className="mb-0 fw-bold text-dark">{rep.title}</h6>
                                     <small className="text-muted">Uploaded on: {new Date(rep.uploadedAt).toLocaleDateString()}</small>
                                   </div>
-                                  <a 
-                                    href={`${API_BASE_URL.replace('/api', '')}${rep.filePath}`} 
-                                    target="_blank" 
-                                    rel="noreferrer" 
-                                    className="btn btn-sm btn-outline-danger px-3"
-                                  >
-                                    Open File
-                                  </a>
+                                  <div className="d-flex align-items-center">
+                                    {rep.aiAnalysis && rep.aiAnalysis.condition && (
+                                      <button 
+                                        type="button"
+                                        className="btn btn-sm btn-outline-primary px-3 me-2"
+                                        onClick={() => setSelectedReportForAI(rep)}
+                                      >
+                                        <i className="fa fa-robot me-1"></i> AI Insights
+                                      </button>
+                                    )}
+                                    <a 
+                                      href={`${API_BASE_URL.replace('/api', '')}${rep.filePath}`} 
+                                      target="_blank" 
+                                      rel="noreferrer" 
+                                      className="btn btn-sm btn-outline-danger px-3"
+                                    >
+                                      Open File
+                                    </a>
+                                  </div>
                                 </div>
                                 <div 
                                   className="bg-light p-2 border rounded mt-2" 
@@ -1036,6 +1059,58 @@ export const DoctorDashboard: React.FC = () => {
 
         </div>
       </div>
+      {/* AI Analysis Modal Popup */}
+      {selectedReportForAI && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg">
+              <div className="modal-header bg-primary text-white py-3">
+                <h5 className="modal-title fw-bold"><i className="fa fa-robot me-2"></i>Klinik AI Bot Assistant</h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setSelectedReportForAI(null)}></button>
+              </div>
+              <div className="modal-body p-4 text-start">
+                <h6 className="fw-bold text-dark mb-3"><i className="fa fa-file-medical me-2 text-primary"></i>Report: {selectedReportForAI.title}</h6>
+                
+                <div className="mb-3">
+                  <strong className="small text-danger d-block mb-1">AI Detected Condition:</strong>
+                  <div className="p-2 bg-light border rounded fw-bold text-dark">{selectedReportForAI.aiAnalysis?.condition || 'No condition flagged.'}</div>
+                </div>
+                
+                <div className="mb-3">
+                  <strong className="small text-warning-emphasis d-block mb-1">Critical Metric Alerts:</strong>
+                  <div className="p-2 bg-light border rounded text-muted small">{selectedReportForAI.aiAnalysis?.alerts || 'No critical metrics flagged.'}</div>
+                </div>
+                
+                <div className="mb-3">
+                  <strong className="small text-success d-block mb-1">Remedies & Overcome Plan:</strong>
+                  <div className="p-2 bg-light border rounded text-muted small" style={{ whiteSpace: 'pre-wrap' }}>{selectedReportForAI.aiAnalysis?.remedies || 'Standard rest and recovery recommended.'}</div>
+                </div>
+                
+                <div className="alert alert-warning py-2 px-3 small border-0 mb-0 mt-3">
+                  <i className="fa fa-info-circle me-1"></i> Medical AI is a reference tool. Clinically verify all diagnoses.
+                </div>
+              </div>
+              <div className="modal-footer bg-light border-top-0 d-flex justify-content-between py-3">
+                <button type="button" className="btn btn-outline-secondary px-4" onClick={() => setSelectedReportForAI(null)}>Close</button>
+                {selectedApp && (
+                  <button 
+                    type="button" 
+                    className="btn btn-success fw-bold px-4"
+                    onClick={() => {
+                      setDiagnosis(selectedReportForAI.aiAnalysis?.condition || '');
+                      setTreatmentPlan(selectedReportForAI.aiAnalysis?.remedies || '');
+                      setSelectedReportForAI(null);
+                      triggerToast('success', 'AI recommendations copied to EMR!');
+                    }}
+                  >
+                    <i className="fa fa-copy me-2"></i> Copy to EMR Form
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

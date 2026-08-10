@@ -15,3 +15,15 @@ npm-debug.log*
 # editor files
 .vscode/
 .idea/
+
+
+node_modules/
+package-lock.json
+.env
+.env.local
+backend/uploads/
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
