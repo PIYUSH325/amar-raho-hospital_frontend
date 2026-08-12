@@ -20,7 +20,7 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
-
+import HospitalAIChatbot from './components/HospitalAIChatbot';
 
 // Stylesheets
 import './assets/css/bootstrap.min.css';
@@ -78,6 +78,7 @@ export const App: React.FC = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>
+        <HospitalAIChatbot />
       </Router>
     </AuthProvider>
   );

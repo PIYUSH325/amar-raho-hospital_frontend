@@ -37,6 +37,7 @@ export interface PatientReport {
   filePath: string;
   extractedText: string;
   aiAnalysis?: AIAnalysis;
+  doctorRef?: string;
   uploadedAt: string;
 }
 

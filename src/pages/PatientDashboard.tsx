@@ -16,6 +16,7 @@ export const PatientDashboard: React.FC = () => {
   const [reportTitle, setReportTitle] = useState('');
   const [reportFile, setReportFile] = useState<File | null>(null);
   const [uploadingReport, setUploadingReport] = useState(false);
+  const [selectedDoctorRef, setSelectedDoctorRef] = useState('');
   
   const [loading, setLoading] = useState(true);
   const [errorToast, setErrorToast] = useState<string | null>(null);
@@ -78,8 +79,8 @@ export const PatientDashboard: React.FC = () => {
 
     const handleReportUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reportFile || !reportTitle.trim()) {
-      triggerError('Please enter a title and select a report file.');
+    if (!reportFile || !reportTitle.trim() || !selectedDoctorRef) {
+      triggerError('Please enter a title, select a target doctor, and choose a report file.');
       return;
     }
 
@@ -87,6 +88,7 @@ export const PatientDashboard: React.FC = () => {
     const formData = new FormData();
     formData.append('title', reportTitle);
     formData.append('reportFile', reportFile);
+    formData.append('doctorRef', selectedDoctorRef);
 
     try {
       const token = localStorage.getItem('hospital_token');
@@ -100,6 +102,7 @@ export const PatientDashboard: React.FC = () => {
       alert('Lab report uploaded successfully!');
       setReportTitle('');
       setReportFile(null);
+      setSelectedDoctorRef('');
       fetchData(); // Refresh patient profile metadata to fetch new reports list
     } catch (err: any) {
       triggerError(err.response?.data?.message || 'Failed to upload report file.');
@@ -420,17 +423,40 @@ export const PatientDashboard: React.FC = () => {
                           
                           {/* Upload Form */}
                           <form onSubmit={handleReportUpload} className="row g-3 mb-4 pb-4 border-bottom">
-                            <div className="col-md-6">
+                            <div className="col-md-4">
                               <input 
                                 type="text" 
                                 className="form-control" 
-                                placeholder="Report Title (e.g. Dr Lal PathLabs Blood Test)" 
+                                placeholder="Report Title (e.g. Blood Test)" 
                                 value={reportTitle} 
                                 onChange={(e) => setReportTitle(e.target.value)} 
                                 required 
                               />
                             </div>
-                            <div className="col-md-4">
+                            <div className="col-md-3">
+                              {/* Unique Booked Doctors Selector */}
+                              <select 
+                                className="form-select"
+                                value={selectedDoctorRef}
+                                onChange={(e) => setSelectedDoctorRef(e.target.value)}
+                                required
+                              >
+                                <option value="">Select Target Doctor...</option>
+                                {(() => {
+                                  const bookedDoctors = Array.from(
+                                    new Map(
+                                      appointments
+                                        .filter(app => app.doctorRef && app.doctor)
+                                        .map(app => [app.doctorRef, app.doctor])
+                                    ).entries()
+                                  ).map(([id, name]) => ({ id, name }));
+                                  return bookedDoctors.map(doc => (
+                                    <option key={doc.id} value={doc.id}>{doc.name}</option>
+                                  ));
+                                })()}
+                              </select>
+                            </div>
+                            <div className="col-md-3">
                               <input 
                                 type="file" 
                                 className="form-control" 
@@ -461,7 +487,18 @@ export const PatientDashboard: React.FC = () => {
                                 >
                                   <div>
                                     <h6 className="mb-0 fw-bold text-dark">{rep.title}</h6>
-                                    <small className="text-muted">Uploaded: {new Date(rep.uploadedAt).toLocaleDateString()}</small>
+                                    <div className="d-flex align-items-center mt-1">
+                                      <small className="text-muted">Uploaded: {new Date(rep.uploadedAt).toLocaleDateString()}</small>
+                                      {rep.doctorRef && (
+                                        <span className="badge bg-light text-primary border border-primary-subtle ms-3 small">
+                                          <i className="fa fa-user-md me-1"></i>
+                                          For: {(() => {
+                                            const matchedDoc = appointments.find(app => app.doctorRef === rep.doctorRef);
+                                            return matchedDoc ? matchedDoc.doctor : 'Assigned Doctor';
+                                          })()}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                   <span className="badge bg-primary px-3 py-2 rounded-pill">View PDF / Image</span>
                                 </a>
