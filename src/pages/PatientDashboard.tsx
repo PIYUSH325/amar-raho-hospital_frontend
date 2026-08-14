@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { Appointment, PatientProfile, MedicalRecord, Prescription } from '../types';
+import { Appointment, PatientProfile, MedicalRecord, Prescription, DietPlanTask } from '../types';
+import { LiveChatBox } from '../components/LiveChatBox';
+
 
 export const PatientDashboard: React.FC = () => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'bookings' | 'profile' | 'records'>('bookings');
+  const [activeTab, setActiveTab] = useState<'bookings' | 'profile' | 'records' | 'todo' | 'nutrition' | 'fitness' | 'General Habits' | 'chats'>('bookings');
   
   // States
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [records, setRecords] = useState<MedicalRecord[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [todoChecklist, setTodoChecklist] = useState<DietPlanTask[]>([]);
   
   const [reportTitle, setReportTitle] = useState('');
   const [reportFile, setReportFile] = useState<File | null>(null);
@@ -22,6 +25,7 @@ export const PatientDashboard: React.FC = () => {
   const [errorToast, setErrorToast] = useState<string | null>(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
+  const [chatPartnerId, setChatPartnerId] = useState(''); // Selected Doctor ID
 
   const triggerError = (msg: string) => {
     setErrorToast(msg);
@@ -38,6 +42,14 @@ export const PatientDashboard: React.FC = () => {
       try {
         const profRes = await axios.get(`${API_BASE_URL}/patients/me`, { headers });
         setProfile(profRes.data.data);
+        
+        // Fetch checklist & trigger missed task alerts
+        try {
+          const checkRes = await axios.post(`${API_BASE_URL}/patients/todo/check-missed`, {}, { headers });
+          setTodoChecklist(checkRes.data.data || []);
+        } catch (err) {
+          setTodoChecklist(profRes.data.data?.dietPlan || []);
+        }
       } catch (err) {
         console.error('Failed to load profile details');
       }
@@ -76,6 +88,22 @@ export const PatientDashboard: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const handleToggleTask = async (taskId: string) => {
+    try {
+      const token = localStorage.getItem('hospital_token');
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await axios.put(`${API_BASE_URL}/patients/todo/toggle`, { taskId }, { headers });
+      if (res.data.success) {
+        setTodoChecklist(res.data.data);
+      }
+    } catch (err: any) {
+      triggerError(err.response?.data?.message || 'Failed to toggle task');
+    }
+  };
+
+
+
 
     const handleReportUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,8 +155,7 @@ export const PatientDashboard: React.FC = () => {
   const isProfileIncomplete = !profile?.mobile || !profile?.age || !profile?.gender;
 
   return (
-    <div className="container-xxl py-5">
-      <div className="container">
+    <div className="container-fluid py-5 px-4 px-lg-5">
         
         {errorToast && (
           <div className="alert alert-danger position-fixed top-0 end-0 m-4 shadow-lg" style={{ zIndex: 1050 }}>
@@ -165,6 +192,39 @@ export const PatientDashboard: React.FC = () => {
                   onClick={() => setActiveTab('records')}
                 >
                   <i className="fa fa-notes-medical me-2"></i> Medical Records
+                </button>
+                {/* <button 
+                  className={`nav-link border-0 text-start py-3 mb-2 rounded ${activeTab === 'todo' ? 'active bg-primary text-white' : 'bg-transparent text-dark'}`}
+                  onClick={() => setActiveTab('todo')}
+                >
+                  <i className="fa fa-apple-alt me-2"></i> Daily Checklist
+                </button> */}
+                {/* 🍏 Nutrition Plans Sidebar Link */}
+                <button 
+                  className={`nav-link border-0 text-start py-3 mb-2 rounded ${activeTab === 'nutrition' ? 'active bg-primary text-white' : 'bg-transparent text-dark'}`}
+                  onClick={() => setActiveTab('nutrition')}
+                >
+                  <i className="fa fa-apple-alt me-2"></i> Nutrition Plans
+                </button>
+                <button 
+                  className={`nav-link border-0 text-start py-3 mb-2 rounded ${activeTab === 'General Habits' ? 'active bg-primary text-white' : 'bg-transparent text-dark'}`}
+                  onClick={() => setActiveTab('General Habits')}
+                >
+                  <i className="fa fa-running me-2"></i> General Habits 
+                </button>
+
+                {/* 🏃 Fitness Plans Sidebar Link */}
+                <button 
+                  className={`nav-link border-0 text-start py-3 mb-2 rounded ${activeTab === 'fitness' ? 'active bg-primary text-white' : 'bg-transparent text-dark'}`}
+                  onClick={() => setActiveTab('fitness')}
+                >
+                  <i className="fa fa-running me-2"></i> Fitness Plans
+                </button>
+                <button 
+                  className={`nav-link border-0 text-start py-3 mb-2 rounded ${activeTab === 'chats' ? 'active bg-primary text-white' : 'bg-transparent text-dark'}`}
+                  onClick={() => { setActiveTab('chats'); setChatPartnerId(''); }}
+                >
+                  <i className="fa fa-comments me-2"></i> Messages
                 </button>
                 <button 
                   className="nav-link border-0 text-start text-danger py-3 bg-transparent rounded mt-4"
@@ -509,6 +569,306 @@ export const PatientDashboard: React.FC = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* TAB 4: NUTRITION PLANS */}
+                  {activeTab === 'nutrition' && (
+                    <div className="animate__animated animate__fadeIn text-start">
+                      <div className="d-flex justify-content-between align-items-center mb-4">
+                        <h3 className="fw-bold m-0 text-dark">
+                          <i className="fa fa-apple-alt text-success me-2"></i>My Nutrition Plans
+                        </h3>
+                        <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={fetchData}>
+                          <i className="fa fa-sync-alt me-1"></i> Refresh Tasks
+                        </button>
+                      </div>
+
+                      {todoChecklist.filter(t => t.type === 'nutrition').length === 0 ? (
+                        <div className="text-center py-5 text-muted border rounded-4 bg-light">
+                          <i className="fa fa-clipboard-list fa-3x mb-3 text-muted"></i>
+                          <p className="m-0 fw-semibold">No nutrition plan assigned.</p>
+                          <p className="small text-muted mt-1">Your doctor has not yet configured a nutrition schedule for you.</p>
+                        </div>
+                      ) : (
+                        <div className="list-group shadow-sm rounded-4">
+                          {todoChecklist.filter(t => t.type === 'nutrition').map((item) => {
+                            const isMissed = (() => {
+                              if (item.isCompleted) return false;
+                              const now = new Date();
+                              const currentHours = now.getHours();
+                              const currentMinutes = now.getMinutes();
+                              const currentTimeVal = currentHours * 60 + currentMinutes;
+                              
+                              const parts = item.targetTime.split(':');
+                              const targetHours = parseInt(parts[0], 10);
+                              const targetMinutes = parseInt(parts[1], 10);
+                              const targetTimeVal = targetHours * 60 + targetMinutes;
+                              
+                              return currentTimeVal > targetTimeVal;
+                            })();
+
+                            return (
+                              <div 
+                                key={item._id} 
+                                className="list-group-item d-flex align-items-center py-3 border-light justify-content-between"
+                                style={{ background: item.isCompleted ? '#f0fdf4' : isMissed ? '#fef2f2' : '#ffffff' }}
+                              >
+                                <div className="form-check d-flex align-items-center gap-2">
+                                  <input 
+                                    className="form-check-input border-secondary fs-5" 
+                                    type="checkbox" 
+                                    id={item._id}
+                                    checked={item.isCompleted} 
+                                    disabled={isMissed}
+                                    onChange={() => item._id && handleToggleTask(item._id)}
+                                  />
+                                  <label 
+                                    className={`form-check-label ms-2 small text-dark ${item.isCompleted ? 'text-decoration-line-through text-muted fw-bold' : isMissed ? 'text-muted' : 'fw-semibold'}`}
+                                    htmlFor={item._id}
+                                  >
+                                    {item.task}
+                                    {item.doctorName && (
+                                      <span className="ms-2 badge bg-light text-muted border fw-normal" style={{ fontSize: '9px', textDecoration: 'none' }}>
+                                        by {item.doctorName}
+                                      </span>
+                                    )}
+                                  </label>
+                                </div>
+
+                                <div className="d-flex align-items-center gap-2">
+                                  <span className="small text-muted" style={{ fontSize: '11px' }}>
+                                    <i className="fa fa-clock me-1"></i>by {item.targetTime}
+                                  </span>
+                                  {isMissed && (
+                                    <span className="badge bg-danger rounded-pill px-2" style={{ fontSize: '9px' }}>Missed</span>
+                                  )}
+                                  {item.isCompleted && (
+                                    <span className="badge bg-success rounded-pill px-2" style={{ fontSize: '9px' }}>Completed</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 5: FITNESS PLANS */}
+                  {activeTab === 'fitness' && (
+                    <div className="animate__animated animate__fadeIn text-start">
+                      <div className="d-flex justify-content-between align-items-center mb-4">
+                        <h3 className="fw-bold m-0 text-dark">
+                          <i className="fa fa-running text-primary me-2"></i>My Fitness Plans
+                        </h3>
+                        <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={fetchData}>
+                          <i className="fa fa-sync-alt me-1"></i> Refresh Tasks
+                        </button>
+                      </div>
+
+                      {todoChecklist.filter(t => t.type === 'fitness').length === 0 ? (
+                        <div className="text-center py-5 text-muted border rounded-4 bg-light">
+                          <i className="fa fa-clipboard-list fa-3x mb-3 text-muted"></i>
+                          <p className="m-0 fw-semibold">No fitness plan assigned.</p>
+                          <p className="small text-muted mt-1">Your doctor has not yet configured a physical exercise schedule for you.</p>
+                        </div>
+                      ) : (
+                        <div className="list-group shadow-sm rounded-4">
+                          {todoChecklist.filter(t => t.type === 'fitness').map((item) => {
+                            const isMissed = (() => {
+                              if (item.isCompleted) return false;
+                              const now = new Date();
+                              const currentHours = now.getHours();
+                              const currentMinutes = now.getMinutes();
+                              const currentTimeVal = currentHours * 60 + currentMinutes;
+                              
+                              const parts = item.targetTime.split(':');
+                              const targetHours = parseInt(parts[0], 10);
+                              const targetMinutes = parseInt(parts[1], 10);
+                              const targetTimeVal = targetHours * 60 + targetMinutes;
+                              
+                              return currentTimeVal > targetTimeVal;
+                            })();
+
+                            return (
+                              <div 
+                                key={item._id} 
+                                className="list-group-item d-flex align-items-center py-3 border-light justify-content-between"
+                                style={{ background: item.isCompleted ? '#ecfdf5' : isMissed ? '#fef2f2' : '#ffffff' }}
+                              >
+                                <div className="form-check d-flex align-items-center gap-2">
+                                  <input 
+                                    className="form-check-input border-secondary fs-5" 
+                                    type="checkbox" 
+                                    id={item._id}
+                                    checked={item.isCompleted} 
+                                    disabled={isMissed}
+                                    onChange={() => item._id && handleToggleTask(item._id)}
+                                  />
+                                  <label 
+                                    className={`form-check-label ms-2 small text-dark ${item.isCompleted ? 'text-decoration-line-through text-muted fw-bold' : isMissed ? 'text-muted' : 'fw-semibold'}`}
+                                    htmlFor={item._id}
+                                  >
+                                    {item.task}
+                                    {item.doctorName && (
+                                      <span className="ms-2 badge bg-light text-muted border fw-normal" style={{ fontSize: '9px', textDecoration: 'none' }}>
+                                        by {item.doctorName}
+                                      </span>
+                                    )}
+                                  </label>
+                                </div>
+
+                                <div className="d-flex align-items-center gap-2">
+                                  <span className="small text-muted" style={{ fontSize: '11px' }}>
+                                    <i className="fa fa-clock me-1"></i>by {item.targetTime}
+                                  </span>
+                                  {isMissed && (
+                                    <span className="badge bg-danger rounded-pill px-2" style={{ fontSize: '9px' }}>Missed</span>
+                                  )}
+                                  {item.isCompleted && (
+                                    <span className="badge bg-success rounded-pill px-2" style={{ fontSize: '9px' }}>Completed</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 6: GENERAL HABITS */}
+                  {activeTab === 'General Habits' && (
+                    <div className="animate__animated animate__fadeIn text-start">
+                      <div className="d-flex justify-content-between align-items-center mb-4">
+                        <h3 className="fw-bold m-0 text-dark">
+                          <i className="fa fa-running text-info me-2"></i>My General Habits
+                        </h3>
+                        <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={fetchData}>
+                          <i className="fa fa-sync-alt me-1"></i> Refresh Tasks
+                        </button>
+                      </div>
+
+                      {todoChecklist.filter(t => t.type === 'general').length === 0 ? (
+                        <div className="text-center py-5 text-muted border rounded-4 bg-light">
+                          <i className="fa fa-clipboard-list fa-3x mb-3 text-muted"></i>
+                          <p className="m-0 fw-semibold">No general habit tasks assigned.</p>
+                          <p className="small text-muted mt-1">Your doctor has not yet configured general habit targets for you today.</p>
+                        </div>
+                      ) : (
+                        <div className="list-group shadow-sm rounded-4">
+                          {todoChecklist.filter(t => t.type === 'general').map((item) => {
+                            const isMissed = (() => {
+                              if (item.isCompleted) return false;
+                              const now = new Date();
+                              const currentHours = now.getHours();
+                              const currentMinutes = now.getMinutes();
+                              const currentTimeVal = currentHours * 60 + currentMinutes;
+                              
+                              const parts = item.targetTime.split(':');
+                              const targetHours = parseInt(parts[0], 10);
+                              const targetMinutes = parseInt(parts[1], 10);
+                              const targetTimeVal = targetHours * 60 + targetMinutes;
+                              
+                              return currentTimeVal > targetTimeVal;
+                            })();
+
+                            return (
+                              <div 
+                                key={item._id} 
+                                className="list-group-item d-flex align-items-center py-3 border-light justify-content-between"
+                                style={{ background: item.isCompleted ? '#e0f2fe' : isMissed ? '#fef2f2' : '#ffffff' }}
+                              >
+                                <div className="form-check d-flex align-items-center gap-2">
+                                  <input 
+                                    className="form-check-input border-secondary fs-5" 
+                                    type="checkbox" 
+                                    id={item._id}
+                                    checked={item.isCompleted} 
+                                    disabled={isMissed}
+                                    onChange={() => item._id && handleToggleTask(item._id)}
+                                  />
+                                  <label 
+                                    className={`form-check-label ms-2 small text-dark ${item.isCompleted ? 'text-decoration-line-through text-muted fw-bold' : isMissed ? 'text-muted' : 'fw-semibold'}`}
+                                    htmlFor={item._id}
+                                  >
+                                    {item.task}
+                                    {item.doctorName && (
+                                      <span className="ms-2 badge bg-light text-muted border fw-normal" style={{ fontSize: '9px', textDecoration: 'none' }}>
+                                        by {item.doctorName}
+                                      </span>
+                                    )}
+                                  </label>
+                                </div>
+
+                                <div className="d-flex align-items-center gap-2">
+                                  <span className="small text-muted" style={{ fontSize: '11px' }}>
+                                    <i className="fa fa-clock me-1"></i>by {item.targetTime}
+                                  </span>
+                                  {isMissed && (
+                                    <span className="badge bg-danger rounded-pill px-2" style={{ fontSize: '9px' }}>Missed</span>
+                                  )}
+                                  {item.isCompleted && (
+                                    <span className="badge bg-success rounded-pill px-2" style={{ fontSize: '9px' }}>Completed</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 7: PATIENT-DOCTOR PRIVATE CHAT */}
+                  {activeTab === 'chats' && (
+                    <div className="animate__animated animate__fadeIn text-start">
+                      <h3 className="fw-bold mb-4 text-dark"><i className="fa fa-comments text-primary me-2"></i>My Consultations Chat</h3>
+                      <div className="row g-4">
+                        {/* Doctors List Column */}
+                        <div className="col-md-4">
+                          <div className="card border rounded-4 p-3 shadow-sm bg-light">
+                            <h6 className="fw-bold mb-3 text-muted">Select a Doctor</h6>
+                            <div className="list-group">
+                              {/* Fetch unique doctors the patient has appointments with */}
+                              {Array.from(new Set(appointments.map(a => a.doctorRef))).map((docId) => {
+                                const appointment = appointments.find(a => a.doctorRef === docId);
+                                if (!docId || !appointment) return null;
+                                return (
+                                  <button
+                                    key={docId}
+                                    type="button"
+                                    className={`list-group-item list-group-item-action border-0 rounded-3 mb-2 py-3 shadow-sm ${chatPartnerId === docId ? 'active bg-primary text-white' : ''}`}
+                                    onClick={() => setChatPartnerId(docId)}
+                                  >
+                                    <div className="fw-bold small">{appointment.doctor}</div>
+                                    <span className="text-muted d-block small" style={{ fontSize: '10px' }}>Consulting Physician</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Chat Box Column */}
+                        <div className="col-md-8">
+                          {chatPartnerId ? (
+                            <LiveChatBox 
+                              chatPartnerId={chatPartnerId} 
+                              chatPartnerName={appointments.find(a => a.doctorRef === chatPartnerId)?.doctor || 'Doctor'} 
+                              currentUserRole="patient" 
+                            />
+                          ) : (
+                            <div className="card border rounded-4 shadow-sm text-center py-5 bg-light my-auto h-100 d-flex flex-column justify-content-center" style={{ minHeight: '300px' }}>
+                              <i className="fa fa-comments fa-3x mb-3 text-muted"></i>
+                              <h5 className="fw-bold">No Doctor Selected</h5>
+                              <p className="text-muted small">Choose a doctor from the list on the left to load the conversation.</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                 </>
               )}
 
@@ -517,7 +877,6 @@ export const PatientDashboard: React.FC = () => {
 
         </div>
       </div>
-    </div>
   );
 };
 

@@ -41,6 +41,16 @@ export interface PatientReport {
   uploadedAt: string;
 }
 
+export interface DietPlanTask {
+  _id?: string;
+  task: string;
+  type: 'nutrition' | 'fitness' | 'general';
+  targetTime: string; // e.g. "12:00"
+  isCompleted: boolean;
+  createdBy?: string;
+  doctorName?: string;
+}
+
 export interface PatientProfile {
   _id: string;
   user: User;
@@ -51,6 +61,7 @@ export interface PatientProfile {
   emergencyContact: string;
   address: string;
   reports?: PatientReport[];
+  dietPlan?: DietPlanTask[];
 }
 
 export interface DoctorProfile {
@@ -115,4 +126,14 @@ export interface Department {
   _id: string;
   name: string;
   description: string;
+}
+
+export interface DitePlan {
+  _id: string;
+  task:string;
+  type: 'nutrition' | 'fitness' | 'general';
+  targetTime: string; // e.g. "12:00"
+  isCompleted: boolean;
+  createdBy?: string;
+  doctorName?: string;
 }

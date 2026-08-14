@@ -1,4 +1,12 @@
 /********** Template CSS **********/
+html, body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+}
+
 :root {
     --primary: #0463FA;
     --light: #EFF5FF;
@@ -132,7 +140,10 @@
 @media (min-width: 992px) {
     .navbar .nav-item .dropdown-menu {
         display: block;
-        border: none;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        border-radius: 8px !important;
+        overflow: hidden;
         margin-top: 0;
         top: 150%;
         opacity: 0;

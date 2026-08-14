@@ -52,7 +52,7 @@ export const Navbar: React.FC = () => {
         <span className="navbar-toggler-icon"></span>
       </button>
       <div className={`collapse navbar-collapse ${!isCollapsed ? 'show' : ''}`} id="navbarCollapse">
-        <div className="navbar-nav ms-auto p-4 p-lg-0">
+        <div className="navbar-nav ms-auto p-4 p-lg-0 pe-lg-5">
           {!isDashboardRoute && (
             <>
               <NavLink 
@@ -92,7 +92,7 @@ export const Navbar: React.FC = () => {
                 >
                   Pages
                 </a>
-                <div className={`dropdown-menu rounded-0 rounded-bottom m-0 ${isDropdownOpen ? 'show' : ''}`}>
+                <div className={`dropdown-menu m-0 ${isDropdownOpen ? 'show' : ''}`}>
                   <NavLink to="/features" className="dropdown-item" onClick={closeMenu}>Feature</NavLink>
                   <NavLink to="/team" className="dropdown-item" onClick={closeMenu}>Our Doctor</NavLink>
                   <NavLink to="/appointment" className="dropdown-item" onClick={closeMenu}>Appointment</NavLink>
@@ -137,7 +137,7 @@ export const Navbar: React.FC = () => {
               >
                 <i className="fa fa-user-circle me-1"></i> {user.name}
               </a>
-              <div className={`dropdown-menu rounded-0 rounded-bottom m-0 ${isUserDropdownOpen ? 'show' : ''}`}>
+              <div className={`dropdown-menu dropdown-menu-end m-0 ${isUserDropdownOpen ? 'show' : ''}`}>
                 {/* Render Admin Panel link if user is admin */}
                 {user && user.role === 'admin' && (
                   <NavLink to="/admin" className="dropdown-item" onClick={closeMenu}>

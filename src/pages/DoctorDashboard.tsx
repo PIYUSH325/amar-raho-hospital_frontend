@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { Appointment, DoctorProfile, PatientProfile, MedicalRecord, Prescription } from '../types';
+import { Appointment, DoctorProfile, PatientProfile, MedicalRecord, Prescription, DietPlanTask } from '../types';
+import DietPlanBuilder from '../components/DietPlanBuilder';
+import { LiveChatBox } from '../components/LiveChatBox';
 
 interface PatientListItem {
   _id: string;
@@ -12,7 +14,10 @@ interface PatientListItem {
 
 export const DoctorDashboard: React.FC = () => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'today' | 'appointments' | 'history' | 'profile'>('today');
+ 
+  const [activeTab, setActiveTab] = useState<'today' | 'appointments' | 'history' | 'profile' | 'nutrition' | 'fitness' | 'general' | 'chats'>('today');
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
+  
   
   // Lists
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -27,6 +32,8 @@ export const DoctorDashboard: React.FC = () => {
   // Loading & notification states
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ type: 'success' | 'danger'; text: string } | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Active checkup modal state
   const [selectedApp, setSelectedApp] = useState<Appointment | null>(null);
@@ -39,6 +46,10 @@ export const DoctorDashboard: React.FC = () => {
     { sender: 'ai', text: 'Hi, I am your EMR Copilot. Ask me anything about this report!' }
   ]);
   const [sendingChat, setSendingChat] = useState(false);
+  const [patientTodoChecklist, setPatientTodoChecklist] = useState<DietPlanTask[]>([]);
+  const [selectedPlanPatientId, setSelectedPlanPatientId] = useState<string>('');
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [planSuccessMsg, setPlanSuccessMsg] = useState('');
   
   // Checkup form states
   const [diagnosis, setDiagnosis] = useState('');
@@ -58,8 +69,10 @@ export const DoctorDashboard: React.FC = () => {
     { name: '', dosage: '', frequency: '', duration: '' }
   ]);
   const [instructions, setInstructions] = useState('');
-  
   const [editingPrescriptionId, setEditingPrescriptionId] = useState<string | null>(null);
+  const [liveChatPartnerId, setLiveChatPartnerId] = useState(''); // Selected Patient ID for live chat
+
+
 
   // Doctor profile settings state
   const [profileForm, setProfileForm] = useState({
@@ -71,7 +84,6 @@ export const DoctorDashboard: React.FC = () => {
     availability: [] as string[]
   });
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
 
   const triggerToast = (type: 'success' | 'danger', text: string) => {
     setToast({ type, text });
@@ -115,6 +127,14 @@ export const DoctorDashboard: React.FC = () => {
         setPatients(patRes.data.data);
       } catch (err) {
         console.error('Failed to load patient index');
+      }
+
+      // Load notifications
+      try {
+        const notRes = await axios.get(`${API_BASE_URL}/doctors/notifications`, { headers });
+        setNotifications(notRes.data.data || []);
+      } catch (err) {
+        console.error('Failed to load notifications');
       }
 
     } catch (error) {
@@ -241,6 +261,7 @@ export const DoctorDashboard: React.FC = () => {
       setPatientBloodGroup(matchingPat.metadata?.bloodGroup || '');
       setPatientAddress(matchingPat.metadata?.address || '');
       setPatientEmergency(matchingPat.metadata?.emergencyContact || '');
+      setPatientTodoChecklist(matchingPat.metadata?.dietPlan || []);
     } else {
       setPatientMobile(app.mobile || '');
       setPatientAge('');
@@ -248,6 +269,7 @@ export const DoctorDashboard: React.FC = () => {
       setPatientBloodGroup('');
       setPatientAddress('');
       setPatientEmergency('');
+      setPatientTodoChecklist([]);
     }
   };
 
@@ -272,7 +294,8 @@ export const DoctorDashboard: React.FC = () => {
         gender: patientGender,
         bloodGroup: patientBloodGroup,
         address: patientAddress,
-        emergencyContact: patientEmergency
+        emergencyContact: patientEmergency,
+        dietPlan: patientTodoChecklist
       }, { headers });
 
       // 2. Save Medical consultation record
@@ -320,6 +343,38 @@ export const DoctorDashboard: React.FC = () => {
 
   const handleRemoveMedicine = (index: number) => {
     setMedicines(medicines.filter((_, i) => i !== index));
+  };
+
+  // Save Nutrition/Fitness plan directly from the sidebar tabs
+  const handleSaveIndependentPlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlanPatientId) return;
+    setSavingPlan(true);
+    setPlanSuccessMsg('');
+    try {
+      const token = localStorage.getItem('hospital_token');
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      const res = await axios.put(`${API_BASE_URL}/admin/patients/${selectedPlanPatientId}`, {
+        dietPlan: patientTodoChecklist
+      }, { headers });
+      
+      // Update patients state locally so it has the updated checklist
+      setPatients(patients.map(p => p._id === selectedPlanPatientId ? {
+        ...p,
+        metadata: res.data.data
+      } : p));
+      
+      setPlanSuccessMsg('Plan updated and secured successfully!');
+      triggerToast('success', 'Patient checklist saved and secured successfully.');
+    } catch (err: any) {
+      console.error(err);
+      const msg = err.response?.data?.message || 'Failed to save patient plan';
+      setPlanSuccessMsg(`Error: ${msg}`);
+      triggerToast('danger', msg);
+    } finally {
+      setSavingPlan(false);
+    }
   };
 
   // Save Doctor profile settings
@@ -548,6 +603,38 @@ export const DoctorDashboard: React.FC = () => {
                 <i className="fa fa-user-md fs-5 me-3"></i> 
                 {!isSidebarCollapsed && <span>Profile Settings</span>}
               </button>
+              <button 
+                type="button"
+                className={`premium-nav-link border-0 text-start py-3 px-4 d-flex align-items-center ${activeTab === 'nutrition' ? 'active-link' : 'bg-transparent'}`}
+                onClick={() => { setActiveTab('nutrition'); setSelectedApp(null); setSelectedPatientHistory(null); setSelectedPlanPatientId(''); setPatientTodoChecklist([]); setPlanSuccessMsg(''); }}
+              >
+                <i className="fa fa-apple-alt fs-5 me-3"></i> 
+                {!isSidebarCollapsed && <span>Nutrition Plans</span>}
+              </button>
+              <button 
+                type="button"
+                className={`premium-nav-link border-0 text-start py-3 px-4 d-flex align-items-center ${activeTab === 'fitness' ? 'active-link' : 'bg-transparent'}`}
+                onClick={() => { setActiveTab('fitness'); setSelectedApp(null); setSelectedPatientHistory(null); setSelectedPlanPatientId(''); setPatientTodoChecklist([]); setPlanSuccessMsg(''); }}
+              >
+                <i className="fa fa-running fs-5 me-3"></i> 
+                {!isSidebarCollapsed && <span>Fitness Plans</span>}
+              </button>
+              <button 
+                type="button"
+                className={`premium-nav-link border-0 text-start py-3 px-4 d-flex align-items-center ${activeTab === 'general' ? 'active-link' : 'bg-transparent'}`}
+                onClick={() => { setActiveTab('general'); setSelectedApp(null); setSelectedPatientHistory(null); setSelectedPlanPatientId(''); setPatientTodoChecklist([]); setPlanSuccessMsg(''); }}
+              >
+                <i className="fa fa-clipboard-list fs-5 me-3"></i> 
+                {!isSidebarCollapsed && <span>General Habits</span>}
+              </button>
+              <button 
+                type="button"
+                className={`premium-nav-link border-0 text-start py-3 px-4 d-flex align-items-center ${activeTab === 'chats' ? 'active-link' : 'bg-transparent'}`}
+                onClick={() => { setActiveTab('chats'); setLiveChatPartnerId(''); }}
+              >
+                <i className="fa fa-comments fs-5 me-3"></i> 
+                {!isSidebarCollapsed && <span>Patient Chats</span>}
+              </button>
             </div>
           </div>
 
@@ -584,12 +671,55 @@ export const DoctorDashboard: React.FC = () => {
               <button className="btn btn-light rounded-circle p-2 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
                 <i className="fa fa-envelope text-muted"></i>
               </button>
-              <button className="btn btn-light rounded-circle p-2 d-flex align-items-center justify-content-center position-relative" style={{ width: '40px', height: '40px' }}>
-                <i className="fa fa-bell text-muted"></i>
-                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '9px', marginTop: '8px', marginLeft: '-8px' }}>
-                  {appointments.filter(a => a.status === 'Scheduled').length}
-                </span>
-              </button>
+              <div className="position-relative">
+                <button 
+                  type="button"
+                  className="btn btn-light rounded-circle p-2 d-flex align-items-center justify-content-center position-relative" 
+                  style={{ width: '40px', height: '40px' }}
+                  onClick={() => setShowNotifications(!showNotifications)}
+                >
+                  <i className="fa fa-bell text-muted"></i>
+                  {notifications.length > 0 && (
+                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '9px', marginTop: '8px', marginLeft: '-8px' }}>
+                      {notifications.length}
+                    </span>
+                  )}
+                </button>
+
+                {showNotifications && (
+                  <div 
+                    className="position-absolute end-0 mt-2 bg-white border shadow-lg rounded-4 p-3 animate__animated animate__fadeIn"
+                    style={{ zIndex: 1050, width: '320px', maxHeight: '400px', overflowY: 'auto' }}
+                  >
+                    <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                      <h6 className="fw-bold text-dark m-0 small"><i className="fa fa-bell text-primary me-2"></i>Patient Alerts</h6>
+                      <button 
+                        type="button" 
+                        className="btn btn-link text-muted p-0 small text-decoration-none"
+                        style={{ fontSize: '11px' }}
+                        onClick={() => setNotifications([])}
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                    {notifications.length === 0 ? (
+                      <p className="text-muted small text-center my-3">No patient missed task alerts.</p>
+                    ) : (
+                      <div className="d-flex flex-column gap-2 text-start">
+                        {notifications.map((notif) => (
+                          <div key={notif._id} className="p-2 bg-light border-start border-3 border-warning rounded small text-dark">
+                            <div className="d-flex justify-content-between mb-1" style={{ fontSize: '10px' }}>
+                              <span className="fw-bold text-warning-emphasis">Diet/Fitness Missed</span>
+                              <span className="text-muted">{new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <div style={{ fontSize: '11px', lineHeight: '1.3' }}>{notif.message}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="d-flex align-items-center ms-2">
                 <span className="small fw-semibold text-dark me-2">Dr. {user?.name}</span>
                 <i className="fa fa-chevron-down text-muted small"></i>
@@ -727,6 +857,9 @@ export const DoctorDashboard: React.FC = () => {
                       <textarea className="form-control" rows={2} placeholder="Optional physician checkup findings..." value={notes} onChange={(e) => setNotes(e.target.value)}></textarea>
                     </div>
                   </div>
+
+                  {/* Diet & Fitness Planner Builder */}
+                  <DietPlanBuilder checklist={patientTodoChecklist} onChange={setPatientTodoChecklist} />
 
                   {/* Prescription Builder */}
                   <div className="d-flex justify-content-between align-items-center mb-3">
@@ -1224,6 +1357,243 @@ export const DoctorDashboard: React.FC = () => {
                     </form>
                   </div>
                 )}
+
+                {/* TAB 5: NUTRITION PLANS */}
+                {activeTab === 'nutrition' && (
+                  <div className="animate__animated animate__fadeIn text-start">
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                      <h4 className="fw-bold text-dark m-0">
+                        <i className="fa fa-apple-alt text-success me-2"></i>🍏 Manage Patient Nutrition Plans
+                      </h4>
+                    </div>
+
+                    <div className="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+                      <label className="form-label fw-bold small text-muted mb-2">Select Patient to Prescribe</label>
+                      <select 
+                        className="form-select py-3 mb-4 rounded-3 border-secondary bg-light"
+                        value={selectedPlanPatientId}
+                        onChange={(e) => {
+                          const patId = e.target.value;
+                          setSelectedPlanPatientId(patId);
+                          const pat = patients.find(p => p._id === patId);
+                          setPatientTodoChecklist(pat?.metadata?.dietPlan || []);
+                          setPlanSuccessMsg('');
+                        }}
+                      >
+                        <option value="">-- Choose a patient --</option>
+                        {patients.map((pat) => (
+                          <option key={pat._id} value={pat._id}>
+                            {pat.name} ({pat.email})
+                          </option>
+                        ))}
+                      </select>
+
+                      {selectedPlanPatientId && (
+                        <div>
+                          <div className="alert alert-info py-3 border-0 rounded-3 mb-4">
+                            <i className="fa fa-info-circle me-2"></i>
+                            Prescribing nutrition and diet tasks for <strong>{patients.find(p => p._id === selectedPlanPatientId)?.name}</strong>.
+                          </div>
+
+                          <DietPlanBuilder 
+                            checklist={patientTodoChecklist} 
+                            onChange={setPatientTodoChecklist} 
+                          />
+
+                          {planSuccessMsg && (
+                            <div className="alert alert-success border-0 py-2 px-3 rounded-3 mb-3 small">
+                              <i className="fa fa-check-circle me-1"></i> {planSuccessMsg}
+                            </div>
+                          )}
+
+                          <div className="text-end">
+                            <button 
+                              type="button" 
+                              className="btn btn-success px-5 py-3 fw-bold rounded-pill shadow-sm"
+                              onClick={handleSaveIndependentPlan}
+                              disabled={savingPlan}
+                            >
+                              {savingPlan ? 'Saving Changes...' : 'Save & Secure Nutrition Plan'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 6: FITNESS PLANS */}
+                {activeTab === 'fitness' && (
+                  <div className="animate__animated animate__fadeIn text-start">
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                      <h4 className="fw-bold text-dark m-0">
+                        <i className="fa fa-running text-primary me-2"></i>🏃 Manage Patient Fitness Plans
+                      </h4>
+                    </div>
+
+                    <div className="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+                      <label className="form-label fw-bold small text-muted mb-2">Select Patient to Prescribe</label>
+                      <select 
+                        className="form-select py-3 mb-4 rounded-3 border-secondary bg-light"
+                        value={selectedPlanPatientId}
+                        onChange={(e) => {
+                          const patId = e.target.value;
+                          setSelectedPlanPatientId(patId);
+                          const pat = patients.find(p => p._id === patId);
+                          setPatientTodoChecklist(pat?.metadata?.dietPlan || []);
+                          setPlanSuccessMsg('');
+                        }}
+                      >
+                        <option value="">-- Choose a patient --</option>
+                        {patients.map((pat) => (
+                          <option key={pat._id} value={pat._id}>
+                            {pat.name} ({pat.email})
+                          </option>
+                        ))}
+                      </select>
+
+                      {selectedPlanPatientId && (
+                        <div>
+                          <div className="alert alert-info py-3 border-0 rounded-3 mb-4">
+                            <i className="fa fa-info-circle me-2"></i>
+                            Prescribing exercise and workout tasks for <strong>{patients.find(p => p._id === selectedPlanPatientId)?.name}</strong>.
+                          </div>
+
+                          <DietPlanBuilder 
+                            checklist={patientTodoChecklist} 
+                            onChange={setPatientTodoChecklist} 
+                          />
+
+                          {planSuccessMsg && (
+                            <div className="alert alert-success border-0 py-2 px-3 rounded-3 mb-3 small">
+                              <i className="fa fa-check-circle me-1"></i> {planSuccessMsg}
+                            </div>
+                          )}
+
+                          <div className="text-end">
+                            <button 
+                              type="button" 
+                              className="btn btn-primary px-5 py-3 fw-bold rounded-pill shadow-sm"
+                              onClick={handleSaveIndependentPlan}
+                              disabled={savingPlan}
+                            >
+                              {savingPlan ? 'Saving Changes...' : 'Save & Secure Fitness Plan'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 7: GENERAL HABITS */}
+                {activeTab === 'general' && (
+                  <div className="animate__animated animate__fadeIn text-start">
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                      <h4 className="fw-bold text-dark m-0">
+                        <i className="fa fa-clipboard-list text-info me-2"></i>📋 Manage Patient General Habits
+                      </h4>
+                    </div>
+
+                    <div className="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+                      <label className="form-label fw-bold small text-muted mb-2">Select Patient to Prescribe</label>
+                      <select 
+                        className="form-select py-3 mb-4 rounded-3 border-secondary bg-light"
+                        value={selectedPlanPatientId}
+                        onChange={(e) => {
+                          const patId = e.target.value;
+                          setSelectedPlanPatientId(patId);
+                          const pat = patients.find(p => p._id === patId);
+                          setPatientTodoChecklist(pat?.metadata?.dietPlan || []);
+                          setPlanSuccessMsg('');
+                        }}
+                      >
+                        <option value="">-- Choose a patient --</option>
+                        {patients.map((pat) => (
+                          <option key={pat._id} value={pat._id}>
+                            {pat.name} ({pat.email})
+                          </option>
+                        ))}
+                      </select>
+
+                      {selectedPlanPatientId && (
+                        <div>
+                          <div className="alert alert-info py-3 border-0 rounded-3 mb-4">
+                            <i className="fa fa-info-circle me-2"></i>
+                            Prescribing general habits and routine tasks for <strong>{patients.find(p => p._id === selectedPlanPatientId)?.name}</strong>.
+                          </div>
+
+                          <DietPlanBuilder 
+                            checklist={patientTodoChecklist} 
+                            onChange={setPatientTodoChecklist} 
+                          />
+
+                          {planSuccessMsg && (
+                            <div className="alert alert-success border-0 py-2 px-3 rounded-3 mb-3 small">
+                              <i className="fa fa-check-circle me-1"></i> {planSuccessMsg}
+                            </div>
+                          )}
+
+                          <div className="text-end">
+                            <button 
+                              type="button" 
+                              className="btn btn-info text-white px-5 py-3 fw-bold rounded-pill shadow-sm"
+                              onClick={handleSaveIndependentPlan}
+                              disabled={savingPlan}
+                            >
+                              {savingPlan ? 'Saving Changes...' : 'Save & Secure Habits Plan'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 8: DOCTOR-PATIENT PRIVATE CHAT */}
+                {activeTab === 'chats' && (
+                  <div className="animate__animated animate__fadeIn text-start">
+                    <h4 className="fw-bold mb-4 text-dark"><i className="fa fa-comments text-primary me-2"></i>Patient Conversations</h4>
+                    <div className="row g-4">
+                      {/* Patients List Column */}
+                      <div className="col-md-4">
+                        <div className="card border rounded-4 p-3 shadow-sm bg-light">
+                          <h6 className="fw-bold mb-3 text-muted">Select a Patient</h6>
+                          <div className="list-group">
+                            {patients.map((pat) => (
+                              <button
+                                key={pat._id}
+                                type="button"
+                                className={`list-group-item list-group-item-action border-0 rounded-3 mb-2 py-3 shadow-sm ${liveChatPartnerId === pat._id ? 'active bg-primary text-white' : ''}`}
+                                onClick={() => setLiveChatPartnerId(pat._id)}
+                              >
+                                <div className="fw-bold small">{pat.name}</div>
+                                <span className="text-muted d-block small" style={{ fontSize: '10px' }}>{pat.email}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Chat Box Column */}
+                      <div className="col-md-8">
+                        {liveChatPartnerId ? (
+                          <LiveChatBox 
+                            chatPartnerId={liveChatPartnerId} 
+                            chatPartnerName={patients.find(p => p._id === liveChatPartnerId)?.name || 'Patient'} 
+                            currentUserRole="doctor" 
+                          />
+                        ) : (
+                          <div className="card border rounded-4 shadow-sm text-center py-5 bg-light my-auto h-100 d-flex flex-column justify-content-center" style={{ minHeight: '300px' }}>
+                            <i className="fa fa-comments fa-3x mb-3 text-muted"></i>
+                            <h5 className="fw-bold">No Patient Selected</h5>
+                            <p className="text-muted small">Choose a patient from the roster on the left to start typing.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -1458,6 +1828,7 @@ export const DoctorDashboard: React.FC = () => {
               : doctorReports[0];
 
             return (
+              
               <>
                 {/* Report Selector Dropdown */}
                 <div className="mb-3 flex-shrink-0">

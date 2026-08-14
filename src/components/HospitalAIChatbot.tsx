@@ -20,10 +20,11 @@ export const HospitalAIChatbot: React.FC = () => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isOpen]);
 
-  // Hide the chatbot on admin or doctor pages to avoid UI overlaps
+  // Hide the chatbot on admin, doctor, or patient dashboard pages to avoid UI overlaps
   const isExcludedRoute = 
     location.pathname.startsWith('/doctor-portal') || 
-    location.pathname.startsWith('/admin');
+    location.pathname.startsWith('/admin') ||
+    location.pathname.startsWith('/dashboard');
 
   if (isExcludedRoute) return null;
 
