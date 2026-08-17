@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
@@ -29,6 +29,7 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
   const [callerName, setCallerName] = useState('');
   const [incomingOffer, setIncomingOffer] = useState<any>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [audioMuted, setAudioMuted] = useState(false);
   const [videoMuted, setVideoMuted] = useState(false);
 
@@ -36,25 +37,26 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
   const typingTimeoutRef = useRef<any>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const iceCandidatesQueue = useRef<any[]>([]);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   // Determine the unique room ID based on user roles
-  const getRoomId = () => {
+  const getRoomId = useCallback(() => {
     if (!user?.id || !chatPartnerId) return '';
     return currentUserRole === 'patient'
       ? `chat_${user.id}_${chatPartnerId}`
       : `chat_${chatPartnerId}_${user.id}`;
-  };
+  }, [user?.id, chatPartnerId, currentUserRole]);
 
   // Scroll to bottom of message list container locally without scrolling browser page
   const scrollToBottom = () => {
     setTimeout(() => {
       if (chatBodyRef.current) {
-        // console.log("📜 Scrolling chat to bottom...");
         chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
-// console.log("✅ Scroll complete. Current scrollTop:", chatBodyRef.current.scrollTop, "ScrollHeight:", chatBodyRef.current.scrollHeight);
       }
     }, 50);
   };
@@ -62,6 +64,26 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages, isPartnerTyping]);
+
+  const handleCleanupCall = useCallback(() => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
+    }
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
+    iceCandidatesQueue.current = [];
+    setLocalStream(null);
+    setRemoteStream(null);
+    setCallActive(false);
+    setIsCalling(false);
+    setIsRinging(false);
+    setIncomingOffer(null);
+    setAudioMuted(false);
+    setVideoMuted(false);
+  }, []);
 
   useEffect(() => {
     console.log("=== Chat Hook Triggered ===");
@@ -85,8 +107,6 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
     // 1. Join immediately if already connected, otherwise wait for connect event
     if (socket.connected) {
       joinRoom();
-    } else {
-      console.log("⏳ Socket not connected yet. Waiting for 'connect' event to join room...");
     }
 
     // Automatically join/rejoin on connection changes
@@ -99,7 +119,6 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
         const headers = { Authorization: `Bearer ${token}` };
         const res = await axios.get(`${API_BASE_URL}/chats/${chatPartnerId}`, { headers });
         if (res.data && res.data.success) {
-          // console.log("Loaded history messages count:", res.data.data.length);
           setMessages(res.data.data);
         }
       } catch (err) {
@@ -110,7 +129,6 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
 
     // 3. Listen for incoming messages
     socket.on('receive_message', (msg) => {
-      // // console.log("📥 RECEIVED MESSAGE VIA SOCKET:", msg);
       setMessages((prev) => [...prev, msg]);
     });
 
@@ -133,16 +151,22 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
       setIsCalling(false);
       if (pcRef.current) {
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+        while (iceCandidatesQueue.current.length > 0) {
+          const candidate = iceCandidatesQueue.current.shift();
+          if (candidate) await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        }
       }
     });
 
     socket.on('ice_candidate', async ({ candidate }) => {
-      if (pcRef.current && candidate) {
+      if (pcRef.current?.remoteDescription) {
         try {
           await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
         } catch (e) {
           console.error("Error adding ice candidate:", e);
         }
+      } else {
+        iceCandidatesQueue.current.push(candidate);
       }
     });
 
@@ -152,7 +176,6 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
 
     // Cleanup listeners when switching partner
     return () => {
-      // console.log("🧹 Cleaning up socket listeners for partner:", chatPartnerId);
       socket.off('connect', joinRoom);
       socket.off('receive_message');
       socket.off('typing_status');
@@ -160,8 +183,51 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
       socket.off('call_accepted');
       socket.off('ice_candidate');
       socket.off('call_ended');
+      handleCleanupCall();
     };
-  }, [socket, chatPartnerId, user?.id]);
+  }, [socket, chatPartnerId, user?.id, getRoomId, API_BASE_URL, handleCleanupCall]);
+
+  // Bind video and audio streams when refs or streams change
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream, callActive]);
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream, callActive]);
+
+  useEffect(() => {
+    if (remoteAudioRef.current && remoteStream) {
+      remoteAudioRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream, callActive]);
+
+  const createPeerConnection = (stream: MediaStream, roomId: string) => {
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+    pcRef.current = pc;
+
+    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+    pc.ontrack = (event) => {
+      if (event.streams && event.streams[0]) {
+        setRemoteStream(event.streams[0]);
+      }
+    };
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket?.emit('ice_candidate', { roomId, candidate: event.candidate });
+      }
+    };
+
+    return pc;
+  };
 
   // WebRTC Calling logic
   const startCall = async (type: 'audio' | 'video') => {
@@ -180,27 +246,9 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
         audio: true
       });
       setLocalStream(stream);
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      localStreamRef.current = stream;
 
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-      });
-      pcRef.current = pc;
-
-      stream.getTracks().forEach(track => pc.addTrack(track, stream));
-
-      pc.ontrack = (event) => {
-        if (event.streams && event.streams[0]) {
-          if (remoteVideoRef.current) remoteVideoRef.current.srcObject = event.streams[0];
-        }
-      };
-
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          socket.emit('ice_candidate', { roomId, candidate: event.candidate });
-        }
-      };
-
+      const pc = createPeerConnection(stream, roomId);
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
@@ -226,28 +274,16 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
         audio: true
       });
       setLocalStream(stream);
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      localStreamRef.current = stream;
 
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-      });
-      pcRef.current = pc;
-
-      stream.getTracks().forEach(track => pc.addTrack(track, stream));
-
-      pc.ontrack = (event) => {
-        if (event.streams && event.streams[0]) {
-          if (remoteVideoRef.current) remoteVideoRef.current.srcObject = event.streams[0];
-        }
-      };
-
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          socket.emit('ice_candidate', { roomId, candidate: event.candidate });
-        }
-      };
-
+      const pc = createPeerConnection(stream, roomId);
       await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));
+
+      while (iceCandidatesQueue.current.length > 0) {
+        const candidate = iceCandidatesQueue.current.shift();
+        if (candidate) await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      }
+
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 
@@ -271,26 +307,9 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
     handleCleanupCall();
   };
 
-  const handleCleanupCall = () => {
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-    }
-    if (pcRef.current) {
-      pcRef.current.close();
-    }
-    pcRef.current = null;
-    setLocalStream(null);
-    setCallActive(false);
-    setIsCalling(false);
-    setIsRinging(false);
-    setIncomingOffer(null);
-    setAudioMuted(false);
-    setVideoMuted(false);
-  };
-
   const toggleMuteAudio = () => {
-    if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0];
+    if (localStreamRef.current) {
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setAudioMuted(!audioTrack.enabled);
@@ -299,8 +318,8 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
   };
 
   const toggleMuteVideo = () => {
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0];
+    if (localStreamRef.current) {
+      const videoTrack = localStreamRef.current.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setVideoMuted(!videoTrack.enabled);
@@ -397,6 +416,9 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
               </div>
             )}
           </div>
+
+          {/* Hidden audio player for remote user sound */}
+          <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: 'none' }} />
 
           {/* Call Status and Controls */}
           <div className="d-flex flex-column align-items-center mt-3 gap-2">
