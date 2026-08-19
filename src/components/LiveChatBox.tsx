@@ -206,10 +206,8 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
     }
   }, [remoteStream, callActive]);
 
-  const createPeerConnection = (stream: MediaStream, roomId: string) => {
-    const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-    });
+  const createPeerConnection = (stream: MediaStream, roomId: string, iceServers: any[]) => {
+    const pc = new RTCPeerConnection({ iceServers });
     pcRef.current = pc;
 
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
@@ -248,6 +246,19 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
     const roomId = getRoomId();
 
     try {
+      // 1. Fetch dynamic ICE servers from backend
+      let iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+      try {
+        const token = localStorage.getItem('hospital_token');
+        const headers = { Authorization: `Bearer ${token}` };
+        const iceServersRes = await axios.get(`${API_BASE_URL}/chats/token/ice-servers`, { headers });
+        if (iceServersRes.data && iceServersRes.data.iceServers) {
+          iceServers = iceServersRes.data.iceServers;
+        }
+      } catch (iceErr) {
+        console.warn("Failed to fetch Twilio ICE servers, using Google STUN fallback.", iceErr);
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: type === 'video',
         audio: true
@@ -255,7 +266,7 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
       setLocalStream(stream);
       localStreamRef.current = stream;
 
-      const pc = createPeerConnection(stream, roomId);
+      const pc = createPeerConnection(stream, roomId, iceServers);
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
@@ -276,6 +287,19 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
     const roomId = getRoomId();
 
     try {
+      // 1. Fetch dynamic ICE servers from backend
+      let iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+      try {
+        const token = localStorage.getItem('hospital_token');
+        const headers = { Authorization: `Bearer ${token}` };
+        const iceServersRes = await axios.get(`${API_BASE_URL}/chats/token/ice-servers`, { headers });
+        if (iceServersRes.data && iceServersRes.data.iceServers) {
+          iceServers = iceServersRes.data.iceServers;
+        }
+      } catch (iceErr) {
+        console.warn("Failed to fetch Twilio ICE servers, using Google STUN fallback.", iceErr);
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: callType === 'video',
         audio: true
@@ -283,7 +307,7 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
       setLocalStream(stream);
       localStreamRef.current = stream;
 
-      const pc = createPeerConnection(stream, roomId);
+      const pc = createPeerConnection(stream, roomId, iceServers);
       await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));
 
       while (iceCandidatesQueue.current.length > 0) {
