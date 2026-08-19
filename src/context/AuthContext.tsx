@@ -8,6 +8,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (token: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -64,6 +65,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const resetPassword = async (token: string, password: string) => {
+    try {
+      await authService.resetUserPassword(token, password);
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('hospital_user');
@@ -71,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, forgotPassword, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, forgotPassword, resetPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

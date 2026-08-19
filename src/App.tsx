@@ -18,6 +18,7 @@ import DoctorDashboard from './pages/DoctorDashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import HospitalAIChatbot from './components/HospitalAIChatbot';

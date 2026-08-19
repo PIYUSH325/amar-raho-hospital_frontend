@@ -45,10 +45,20 @@ export const registerUser = async (name: string, email: string, password: string
 
 export const forgotUserPassword = async (email: string): Promise<any> => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/auth/forgot-password`, { email });
+    const response = await axios.post(`${API_BASE_URL}/auth/forgotpassword`, { email });
     return response.data;
   } catch (error: any) {
     console.error('API Error dispatching recovery mail:', error);
     throw new Error(error.response?.data?.message || 'Failed to dispatch recovery link.');
+  }
+};
+
+export const resetUserPassword = async (token: string, password: string): Promise<any> => {
+  try {
+    const response = await axios.put(`${API_BASE_URL}/auth/resetpassword/${token}`, { password });
+    return response.data;
+  } catch (error: any) {
+    console.error('API Error resetting password:', error);
+    throw new Error(error.response?.data?.message || 'Failed to reset password.');
   }
 };
