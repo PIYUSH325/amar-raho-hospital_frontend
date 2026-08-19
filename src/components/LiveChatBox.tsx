@@ -42,7 +42,7 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const iceCandidatesQueue = useRef<any[]>([]);
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; 
 
   // Determine the unique room ID based on user roles
   const getRoomId = useCallback(() => {
@@ -217,6 +217,13 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
     pc.ontrack = (event) => {
       if (event.streams && event.streams[0]) {
         setRemoteStream(event.streams[0]);
+      } else {
+        // Fallback if event.streams is empty (common in audio-only calling)
+        setRemoteStream((prevStream) => {
+          const stream = prevStream || new MediaStream();
+          stream.addTrack(event.track);
+          return stream;
+        });
       }
     };
 
