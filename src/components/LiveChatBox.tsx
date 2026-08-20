@@ -97,6 +97,7 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
     }
 
     const roomId = getRoomId();
+    sessionStorage.setItem('active_chat_room', roomId);
 
     // Helper to safely join the room
     const joinRoom = () => {
@@ -176,6 +177,7 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
 
     // Cleanup listeners when switching partner
     return () => {
+      sessionStorage.removeItem('active_chat_room');
       socket.off('connect', joinRoom);
       socket.off('receive_message');
       socket.off('typing_status');
@@ -399,7 +401,8 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
       recipientId: chatPartnerId,
       patientId,
       doctorId,
-      text: messageText.trim()
+      text: messageText.trim(),
+      senderName: user.name
     });
 
     setMessageText('');

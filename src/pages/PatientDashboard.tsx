@@ -1,12 +1,33 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Appointment, PatientProfile, MedicalRecord, Prescription, DietPlanTask } from '../types';
 import { LiveChatBox } from '../components/LiveChatBox';
+import { fetchDietPlan, fetchComplianceLogs, saveComplianceLog } from '../services/diet';
 
 
 export const PatientDashboard: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (user && user.role === 'doctor') {
+      navigate('/doctor-portal', { replace: true });
+    } else if (user && user.role === 'admin') {
+      navigate('/admin', { replace: true });
+    }
+  }, [user, navigate]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'chats') {
+      setActiveTab('chats');
+    }
+  }, [location.search]);
+
   const [activeTab, setActiveTab] = useState<'bookings' | 'profile' | 'records' | 'todo' | 'nutrition' | 'fitness' | 'General Habits' | 'chats'>('bookings');
   
   // States
@@ -26,6 +47,40 @@ export const PatientDashboard: React.FC = () => {
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
   const [chatPartnerId, setChatPartnerId] = useState(''); // Selected Doctor ID
+
+  // Weekly Diet & Compliance states
+  const [weeklyPlan, setWeeklyPlan] = useState<any>(null);
+  const [complianceToday, setComplianceToday] = useState<any>(null);
+  const [loadingDiet, setLoadingDiet] = useState(false);
+  const [activeWeeklyTab, setActiveWeeklyTab] = useState<'today' | 'week'>('today');
+
+  const loadDietData = async () => {
+    setLoadingDiet(true);
+    try {
+      const planRes = await fetchDietPlan(); // Self query
+      if (planRes.success) {
+        setWeeklyPlan(planRes.data);
+      }
+      
+      const todayStr = new Date().toISOString().split('T')[0];
+      const logsRes = await fetchComplianceLogs('me', todayStr, todayStr);
+      if (logsRes.success && logsRes.data && logsRes.data.length > 0) {
+        setComplianceToday(logsRes.data[0]);
+      } else {
+        setComplianceToday(null);
+      }
+    } catch (err: any) {
+      console.error("Failed to load diet data:", err.message);
+    } finally {
+      setLoadingDiet(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'nutrition') {
+      loadDietData();
+    }
+  }, [activeTab]);
 
   const triggerError = (msg: string) => {
     setErrorToast(msg);
@@ -650,6 +705,142 @@ export const PatientDashboard: React.FC = () => {
                           })}
                         </div>
                       )}
+
+                      {/* 7-DAY WEEKLY MEALS & ADHERENCE LOGS */}
+                      <div className="card border-0 shadow-sm rounded-4 p-4 mt-5 bg-white">
+                        <div className="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                          <div>
+                            <h4 className="fw-bold text-dark m-0">🥗 Weekly Diet Calendar & Meal Adherence</h4>
+                            <p className="text-muted small m-0">Track your daily meal compliance as assigned by your doctor.</p>
+                          </div>
+                          
+                          {/* Segment Selector tabs */}
+                          <div className="btn-group bg-light p-1 rounded-pill border" style={{ padding: '2px' }}>
+                            <button
+                              type="button"
+                              className={`btn btn-xs rounded-pill px-3 py-1 fw-bold ${activeWeeklyTab === 'today' ? 'btn-success text-white shadow-sm' : 'btn-light text-muted border-0 bg-transparent'}`}
+                              onClick={() => setActiveWeeklyTab('today')}
+                            >
+                              Today
+                            </button>
+                            <button
+                              type="button"
+                              className={`btn btn-xs rounded-pill px-3 py-1 fw-bold ${activeWeeklyTab === 'week' ? 'btn-success text-white shadow-sm' : 'btn-light text-muted border-0 bg-transparent'}`}
+                              onClick={() => setActiveWeeklyTab('week')}
+                            >
+                              7-Day Plan
+                            </button>
+                          </div>
+                        </div>
+
+                        {loadingDiet ? (
+                          <div className="text-center py-5">
+                            <div className="spinner-border text-success" role="status"></div>
+                            <p className="text-muted mt-2 small">Loading your nutrition data...</p>
+                          </div>
+                        ) : !weeklyPlan ? (
+                          <div className="text-center py-5 text-muted border border-dashed rounded-4 bg-light">
+                            <i className="fa fa-utensils fa-2x mb-3 text-muted"></i>
+                            <p className="m-0 fw-semibold">No weekly diet calendar assigned.</p>
+                            <p className="small text-muted mt-1">Consult with your physician to create a structured meal plan.</p>
+                          </div>
+                        ) : activeWeeklyTab === 'today' ? (
+                          /* TODAY'S COMPLIANCE LOG CARD */
+                          <div>
+                            {(() => {
+                              const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                              const todayIndex = new Date().getDay();
+                              const todayName = dayNames[todayIndex] as any;
+                              const todayPlan = weeklyPlan[todayName] || {};
+                              const mealSlots = [
+                                { key: 'breakfast', label: '🍳 Breakfast', desc: todayPlan.breakfast },
+                                { key: 'lunch', label: '☀️ Lunch', desc: todayPlan.lunch },
+                                { key: 'snacks', label: '🍎 Snacks', desc: todayPlan.snacks },
+                                { key: 'dinner', label: '🌙 Dinner', desc: todayPlan.dinner }
+                              ];
+
+                              const handleLogAdherence = async (mealSlot: string, status: string) => {
+                                const todayStr = new Date().toISOString().split('T')[0];
+                                try {
+                                  await saveComplianceLog(todayStr, mealSlot, status);
+                                  loadDietData();
+                                } catch (err: any) {
+                                  triggerError(err.message || 'Failed to update adherence.');
+                                }
+                              };
+
+                              return (
+                                <div className="row g-3 text-start">
+                                  <h6 className="fw-bold text-success mb-2 text-capitalize">
+                                    Today's Meals ({todayName}):
+                                  </h6>
+                                  {mealSlots.map((slot) => {
+                                    const activeStatus = complianceToday?.meals?.[slot.key] || 'Pending';
+                                    return (
+                                      <div key={slot.key} className="col-12">
+                                        <div className="p-3 border rounded-3 bg-light-subtle d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+                                          <div>
+                                            <span className="fw-bold text-dark d-block mb-1">{slot.label}</span>
+                                            <span className="text-secondary small">{slot.desc || 'No specific meal assigned.'}</span>
+                                          </div>
+                                          
+                                          {slot.desc && (
+                                            <div className="d-flex align-items-center gap-2">
+                                              <button
+                                                type="button"
+                                                className={`btn btn-sm px-3 rounded-pill fw-bold ${activeStatus === 'Followed' ? 'btn-success text-white' : 'btn-outline-success bg-white'}`}
+                                                onClick={() => handleLogAdherence(slot.key, 'Followed')}
+                                              >
+                                                🟢 Followed
+                                              </button>
+                                              <button
+                                                type="button"
+                                                className={`btn btn-sm px-3 rounded-pill fw-bold ${activeStatus === 'Skipped' ? 'btn-danger text-white' : 'btn-outline-danger bg-white'}`}
+                                                onClick={() => handleLogAdherence(slot.key, 'Skipped')}
+                                              >
+                                                🔴 Skipped
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        ) : (
+                          /* 7-DAY SCHEDULE VIEW CALENDAR */
+                          <div className="table-responsive rounded-3 border">
+                            <table className="table align-middle mb-0 text-start">
+                              <thead className="table-light text-muted small fw-bold">
+                                <tr>
+                                  <th style={{ width: '120px' }}>Day of Week</th>
+                                  <th>Breakfast</th>
+                                  <th>Lunch</th>
+                                  <th>Snacks</th>
+                                  <th>Dinner</th>
+                                </tr>
+                              </thead>
+                              <tbody className="small">
+                                {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
+                                  const dayPlan = weeklyPlan[day] || {};
+                                  return (
+                                    <tr key={day}>
+                                      <td className="fw-bold text-capitalize text-dark">{day}</td>
+                                      <td className="text-secondary">{dayPlan.breakfast || '—'}</td>
+                                      <td className="text-secondary">{dayPlan.lunch || '—'}</td>
+                                      <td className="text-secondary">{dayPlan.snacks || '—'}</td>
+                                      <td className="text-secondary">{dayPlan.dinner || '—'}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 

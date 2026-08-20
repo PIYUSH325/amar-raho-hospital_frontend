@@ -3,7 +3,12 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Appointment, DoctorProfile, PatientProfile, MedicalRecord, Prescription, DietPlanTask } from '../types';
 import DietPlanBuilder from '../components/DietPlanBuilder';
+import WeeklyDietPlanner from '../components/WeeklyDietPlanner';
+import { fetchDietPlan, fetchComplianceLogs } from '../services/diet';
 import { LiveChatBox } from '../components/LiveChatBox';
+import { useLocation } from 'react-router-dom';
+
+const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 interface PatientListItem {
   _id: string;
@@ -17,6 +22,15 @@ export const DoctorDashboard: React.FC = () => {
  
   const [activeTab, setActiveTab] = useState<'today' | 'appointments' | 'history' | 'profile' | 'nutrition' | 'fitness' | 'general' | 'chats'>('today');
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
+  const location = useLocation();
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'chats') {
+      setActiveTab('chats');
+    }
+  }, [location.search]);
   
   
   // Lists
@@ -34,6 +48,57 @@ export const DoctorDashboard: React.FC = () => {
   const [toast, setToast] = useState<{ type: 'success' | 'danger'; text: string } | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [patientTodoChecklist, setPatientTodoChecklist] = useState<DietPlanTask[]>([]);
+  const [selectedPlanPatientId, setSelectedPlanPatientId] = useState<string>('');
+
+  // Weekly Nutrition states
+  const [showWeeklyPlanner, setShowWeeklyPlanner] = useState(false);
+  const [weeklyPlanData, setWeeklyPlanData] = useState<any>(null);
+  const [complianceLogs, setComplianceLogs] = useState<any[]>([]);
+  const [loadingWeeklyData, setLoadingWeeklyData] = useState(false);
+
+  const loadWeeklyData = async () => {
+    if (!selectedPlanPatientId) return;
+    setLoadingWeeklyData(true);
+    try {
+      const planRes = await fetchDietPlan(selectedPlanPatientId);
+      if (planRes.success) {
+        setWeeklyPlanData(planRes.data);
+      }
+      
+      // Get current week dates (Monday to Sunday)
+      const today = new Date();
+      const currentDay = today.getDay();
+      const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+      const mondayDate = new Date(today);
+      mondayDate.setDate(today.getDate() + distanceToMonday);
+      
+      const datesOfWeek: string[] = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(mondayDate);
+        d.setDate(mondayDate.getDate() + i);
+        datesOfWeek.push(d.toISOString().split('T')[0]);
+      }
+      
+      const logsRes = await fetchComplianceLogs(selectedPlanPatientId, datesOfWeek[0], datesOfWeek[6]);
+      if (logsRes.success) {
+        setComplianceLogs(logsRes.data);
+      }
+    } catch (err: any) {
+      console.error("Failed to load weekly nutrition data:", err.message);
+    } finally {
+      setLoadingWeeklyData(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedPlanPatientId && activeTab === 'nutrition') {
+      loadWeeklyData();
+    } else {
+      setWeeklyPlanData(null);
+      setComplianceLogs([]);
+    }
+  }, [selectedPlanPatientId, activeTab]);
 
   // Active checkup modal state
   const [selectedApp, setSelectedApp] = useState<Appointment | null>(null);
@@ -46,8 +111,6 @@ export const DoctorDashboard: React.FC = () => {
     { sender: 'ai', text: 'Hi, I am your EMR Copilot. Ask me anything about this report!' }
   ]);
   const [sendingChat, setSendingChat] = useState(false);
-  const [patientTodoChecklist, setPatientTodoChecklist] = useState<DietPlanTask[]>([]);
-  const [selectedPlanPatientId, setSelectedPlanPatientId] = useState<string>('');
   const [savingPlan, setSavingPlan] = useState(false);
   const [planSuccessMsg, setPlanSuccessMsg] = useState('');
   
@@ -1416,6 +1479,134 @@ export const DoctorDashboard: React.FC = () => {
                               {savingPlan ? 'Saving Changes...' : 'Save & Secure Nutrition Plan'}
                             </button>
                           </div>
+
+                          {/* 7-DAY WEEKLY DIET PLAN & COMPLIANCE SCHEDULER */}
+                          <hr className="my-5" />
+
+                          <div className="d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                              <h5 className="fw-bold text-dark m-0">📅 7-Day Weekly Meal Calendar & Compliance</h5>
+                              <p className="text-muted small m-0">Assign a structured weekly diet and track patient compliance logs.</p>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-primary px-4 py-2 fw-bold rounded-pill shadow-sm"
+                              onClick={() => setShowWeeklyPlanner(true)}
+                            >
+                              <i className="fa fa-utensils me-1"></i> Assign Weekly Diet
+                            </button>
+                          </div>
+
+                          {loadingWeeklyData ? (
+                            <div className="text-center py-4">
+                              <div className="spinner-border text-primary spinner-border-sm" role="status"></div>
+                              <p className="text-muted mt-2 small">Loading compliance logs...</p>
+                            </div>
+                          ) : (
+                            <div className="table-responsive rounded-3 border bg-white shadow-sm">
+                              <table className="table table-hover align-middle mb-0 text-start">
+                                <thead className="table-light text-muted small fw-bold">
+                                  <tr>
+                                    <th style={{ width: '120px' }}>Day of Week</th>
+                                    <th>Breakfast</th>
+                                    <th>Lunch</th>
+                                    <th>Snacks</th>
+                                    <th>Dinner</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="small">
+                                  {daysOfWeek.map((day, idx) => {
+                                    const dayPlan = weeklyPlanData?.[day] || {};
+                                    return (
+                                      <tr key={day}>
+                                        <td className="fw-bold text-capitalize text-dark">{day}</td>
+                                        <td>
+                                          <div className="fw-semibold text-secondary mb-1">{dayPlan.breakfast || '—'}</div>
+                                          {dayPlan.breakfast && (
+                                            <div style={{ fontSize: '10px' }}>
+                                              {(() => {
+                                                const today = new Date();
+                                                const currentDay = today.getDay();
+                                                const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+                                                const targetDate = new Date(today);
+                                                targetDate.setDate(today.getDate() + distanceToMonday + idx);
+                                                const dateStr = targetDate.toISOString().split('T')[0];
+                                                const log = complianceLogs.find(l => l.date === dateStr);
+                                                const status = log?.meals?.breakfast || 'Pending';
+                                                if (status === 'Followed') return <span className="badge bg-success-subtle text-success border border-success">🟢 Followed</span>;
+                                                if (status === 'Skipped') return <span className="badge bg-danger-subtle text-danger border border-danger">🔴 Skipped</span>;
+                                                return <span className="badge bg-light text-muted border">Pending</span>;
+                                              })()}
+                                            </div>
+                                          )}
+                                        </td>
+                                        <td>
+                                          <div className="fw-semibold text-secondary mb-1">{dayPlan.lunch || '—'}</div>
+                                          {dayPlan.lunch && (
+                                            <div style={{ fontSize: '10px' }}>
+                                              {(() => {
+                                                const today = new Date();
+                                                const currentDay = today.getDay();
+                                                const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+                                                const targetDate = new Date(today);
+                                                targetDate.setDate(today.getDate() + distanceToMonday + idx);
+                                                const dateStr = targetDate.toISOString().split('T')[0];
+                                                const log = complianceLogs.find(l => l.date === dateStr);
+                                                const status = log?.meals?.lunch || 'Pending';
+                                                if (status === 'Followed') return <span className="badge bg-success-subtle text-success border border-success">🟢 Followed</span>;
+                                                if (status === 'Skipped') return <span className="badge bg-danger-subtle text-danger border border-danger">🔴 Skipped</span>;
+                                                return <span className="badge bg-light text-muted border">Pending</span>;
+                                              })()}
+                                            </div>
+                                          )}
+                                        </td>
+                                        <td>
+                                          <div className="fw-semibold text-secondary mb-1">{dayPlan.snacks || '—'}</div>
+                                          {dayPlan.snacks && (
+                                            <div style={{ fontSize: '10px' }}>
+                                              {(() => {
+                                                const today = new Date();
+                                                const currentDay = today.getDay();
+                                                const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+                                                const targetDate = new Date(today);
+                                                targetDate.setDate(today.getDate() + distanceToMonday + idx);
+                                                const dateStr = targetDate.toISOString().split('T')[0];
+                                                const log = complianceLogs.find(l => l.date === dateStr);
+                                                const status = log?.meals?.snacks || 'Pending';
+                                                if (status === 'Followed') return <span className="badge bg-success-subtle text-success border border-success">🟢 Followed</span>;
+                                                if (status === 'Skipped') return <span className="badge bg-danger-subtle text-danger border border-danger">🔴 Skipped</span>;
+                                                return <span className="badge bg-light text-muted border">Pending</span>;
+                                              })()}
+                                            </div>
+                                          )}
+                                        </td>
+                                        <td>
+                                          <div className="fw-semibold text-secondary mb-1">{dayPlan.dinner || '—'}</div>
+                                          {dayPlan.dinner && (
+                                            <div style={{ fontSize: '10px' }}>
+                                              {(() => {
+                                                const today = new Date();
+                                                const currentDay = today.getDay();
+                                                const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+                                                const targetDate = new Date(today);
+                                                targetDate.setDate(today.getDate() + distanceToMonday + idx);
+                                                const dateStr = targetDate.toISOString().split('T')[0];
+                                                const log = complianceLogs.find(l => l.date === dateStr);
+                                                const status = log?.meals?.dinner || 'Pending';
+                                                if (status === 'Followed') return <span className="badge bg-success-subtle text-success border border-success">🟢 Followed</span>;
+                                                if (status === 'Skipped') return <span className="badge bg-danger-subtle text-danger border border-danger">🔴 Skipped</span>;
+                                                return <span className="badge bg-light text-muted border">Pending</span>;
+                                              })()}
+                                            </div>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1899,6 +2090,18 @@ export const DoctorDashboard: React.FC = () => {
         </div>
       </div>
       
+      {showWeeklyPlanner && selectedPlanPatientId && (
+        <WeeklyDietPlanner
+          patientId={selectedPlanPatientId}
+          patientName={patients.find(p => p._id === selectedPlanPatientId)?.name || 'Patient'}
+          onClose={() => setShowWeeklyPlanner(false)}
+          onSuccess={() => {
+            setToast({ type: 'success', text: 'Weekly diet plan saved successfully!' });
+            loadWeeklyData();
+          }}
+        />
+      )}
+
       {/* AI Assistant Custom CSS Styles */}
       <style>{`
         @keyframes pulse-ai {
