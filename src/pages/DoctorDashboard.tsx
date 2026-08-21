@@ -21,6 +21,8 @@ export const DoctorDashboard: React.FC = () => {
   const { user, logout } = useAuth();
  
   const [activeTab, setActiveTab] = useState<'today' | 'appointments' | 'history' | 'profile' | 'nutrition' | 'fitness' | 'general' | 'chats'>('today');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [currentDate, setCurrentDate] = useState(new Date());
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
   const location = useLocation();
 
@@ -1261,69 +1263,177 @@ export const DoctorDashboard: React.FC = () => {
                 {/* TAB 2: MANAGE APPOINTMENTS */}
                 {activeTab === 'appointments' && (
                   <div className="animate__animated animate__fadeIn">
-                    <h5 className="fw-bold mb-4 text-dark text-start"><i className="fa fa-calendar-alt text-primary me-2"></i>Consultations & Bookings Hub</h5>
-                    {appointments.length === 0 ? (
-                      <div className="text-center py-5 text-muted border rounded-4 bg-light">
-                        <i className="fa fa-calendar-times fa-3x mb-3 text-muted"></i>
-                        <p className="m-0">No booking requests found in database.</p>
+                    <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-4">
+                      <h5 className="fw-bold text-dark m-0 text-start"><i className="fa fa-calendar-alt text-primary me-2"></i>Consultations & Bookings Hub</h5>
+                      <div className="btn-group border shadow-sm rounded-pill overflow-hidden">
+                        <button 
+                          className={`btn btn-sm px-3 border-0 rounded-0 ${viewMode === 'list' ? 'btn-primary' : 'btn-light text-dark'}`} 
+                          onClick={() => setViewMode('list')}
+                        >
+                          <i className="fa fa-list me-1"></i> List View
+                        </button>
+                        <button 
+                          className={`btn btn-sm px-3 border-0 rounded-0 ${viewMode === 'calendar' ? 'btn-primary' : 'btn-light text-dark'}`} 
+                          onClick={() => setViewMode('calendar')}
+                        >
+                          <i className="fa fa-calendar me-1"></i> Calendar View
+                        </button>
                       </div>
+                    </div>
+
+                    {viewMode === 'list' ? (
+                      appointments.length === 0 ? (
+                        <div className="text-center py-5 text-muted border rounded-4 bg-light">
+                          <i className="fa fa-calendar-times fa-3x mb-3 text-muted"></i>
+                          <p className="m-0">No booking requests found in database.</p>
+                        </div>
+                      ) : (
+                        <div className="table-responsive rounded-4 border bg-white">
+                          <table className="table table-hover align-middle mb-0 text-start">
+                            <thead className="table-light">
+                              <tr className="text-muted small">
+                                <th className="ps-4">Patient</th>
+                                <th>Timings</th>
+                                <th>Reason</th>
+                                <th>Booking Status</th>
+                                <th className="text-end pe-4">Options</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {appointments.map((app) => {
+                                const pat = patients.find(p => p._id === app.user);
+                                return (
+                                  <tr key={app._id}>
+                                    <td className="ps-4">
+                                      <div className="fw-bold text-dark">{pat ? pat.name : 'Unknown Patient'}</div>
+                                      <small className="text-muted">{pat ? pat.email : ''}</small>
+                                    </td>
+                                    <td>{app.date} at <span className="fw-semibold">{app.time}</span></td>
+                                    <td><span className="small text-muted">{app.problem}</span></td>
+                                    <td>
+                                      <span className={`badge ${
+                                        app.status === 'Approved' ? 'bg-success' :
+                                        app.status === 'Completed' ? 'bg-info' :
+                                        app.status === 'Cancelled' ? 'bg-danger' : 'bg-warning'
+                                      }`}>
+                                        {app.status}
+                                      </span>
+                                    </td>
+                                    <td className="text-end pe-4">
+                                      {app.status === 'Scheduled' && (
+                                        <>
+                                          <button type="button" className="btn btn-xs btn-success rounded-pill px-2 me-1" onClick={() => updateStatus(app._id, 'Approved')}>
+                                            Approve
+                                          </button>
+                                          <button type="button" className="btn btn-xs btn-danger rounded-pill px-2" onClick={() => updateStatus(app._id, 'Cancelled')}>
+                                            Cancel
+                                          </button>
+                                        </>
+                                      )}
+                                      {app.status === 'Approved' && (
+                                        <button type="button" className="btn btn-xs btn-primary rounded-pill px-2" onClick={() => startCheckup(app)}>
+                                          Checkup
+                                        </button>
+                                      )}
+                                      {app.status === 'Completed' && (
+                                        <span className="text-success small fw-bold"><i className="fa fa-check-circle"></i> Checked Out</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )
                     ) : (
-                      <div className="table-responsive rounded-4 border bg-white">
-                        <table className="table table-hover align-middle mb-0 text-start">
-                          <thead className="table-light">
-                            <tr className="text-muted small">
-                              <th className="ps-4">Patient</th>
-                              <th>Timings</th>
-                              <th>Reason</th>
-                              <th>Booking Status</th>
-                              <th className="text-end pe-4">Options</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {appointments.map((app) => {
-                              const pat = patients.find(p => p._id === app.user);
-                              return (
-                                <tr key={app._id}>
-                                  <td className="ps-4">
-                                    <div className="fw-bold text-dark">{pat ? pat.name : 'Unknown Patient'}</div>
-                                    <small className="text-muted">{pat ? pat.email : ''}</small>
-                                  </td>
-                                  <td>{app.date} at <span className="fw-semibold">{app.time}</span></td>
-                                  <td><span className="small text-muted">{app.problem}</span></td>
-                                  <td>
-                                    <span className={`badge ${
-                                      app.status === 'Approved' ? 'bg-success' :
-                                      app.status === 'Completed' ? 'bg-info' :
-                                      app.status === 'Cancelled' ? 'bg-danger' : 'bg-warning'
-                                    }`}>
-                                      {app.status}
-                                    </span>
-                                  </td>
-                                  <td className="text-end pe-4">
-                                    {app.status === 'Scheduled' && (
-                                      <>
-                                        <button type="button" className="btn btn-xs btn-success rounded-pill px-2 me-1" onClick={() => updateStatus(app._id, 'Approved')}>
-                                          Approve
-                                        </button>
-                                        <button type="button" className="btn btn-xs btn-danger rounded-pill px-2" onClick={() => updateStatus(app._id, 'Cancelled')}>
-                                          Cancel
-                                        </button>
-                                      </>
-                                    )}
-                                    {app.status === 'Approved' && (
-                                      <button type="button" className="btn btn-xs btn-primary rounded-pill px-2" onClick={() => startCheckup(app)}>
-                                        Checkup
-                                      </button>
-                                    )}
-                                    {app.status === 'Completed' && (
-                                      <span className="text-success small fw-bold"><i className="fa fa-check-circle"></i> Checked Out</span>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                      /* 📅 DOCTOR CALENDAR GRID */
+                      <div className="card p-3 p-md-4 border rounded-4 shadow-sm bg-white overflow-hidden">
+                        <div className="d-flex justify-content-between align-items-center mb-4">
+                          <button 
+                            className="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center" 
+                            style={{ width: '32px', height: '32px' }}
+                            onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}
+                          >
+                            <i className="fa fa-chevron-left"></i>
+                          </button>
+                          <h4 className="fw-bold m-0 text-capitalize text-dark text-center">
+                            {currentDate.toLocaleString('default', { month: 'long' })} {currentDate.getFullYear()}
+                          </h4>
+                          <button 
+                            className="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center" 
+                            style={{ width: '32px', height: '32px' }}
+                            onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}
+                          >
+                            <i className="fa fa-chevron-right"></i>
+                          </button>
+                        </div>
+
+                        {/* Days Header */}
+                        <div className="row text-center fw-bold text-muted small py-2 mb-2 border-bottom">
+                          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                            <div key={d} className="col text-center" style={{ width: '14.28%', flex: '0 0 14.28%' }}>{d}</div>
+                          ))}
+                        </div>
+
+                        {/* Days Grid */}
+                        <div className="row g-0 border-start border-top">
+                          {/* Empty offset cells */}
+                          {Array(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay()).fill(null).map((_, idx) => (
+                            <div key={`empty-${idx}`} className="col border-bottom border-end bg-light" style={{ width: '14.28%', flex: '0 0 14.28%', minHeight: '100px', opacity: 0.4 }}></div>
+                          ))}
+
+                          {/* Month Days */}
+                          {Array(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()).fill(null).map((_, idx) => {
+                            const dayNum = idx + 1;
+                            const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                            
+                            // Find appointments matching this date
+                            const dayApps = appointments.filter(app => app.date === dateStr);
+
+                            return (
+                              <div key={dayNum} className="col border-bottom border-end p-2 position-relative bg-white" style={{ width: '14.28%', flex: '0 0 14.28%', minHeight: '100px' }}>
+                                <span className="fw-bold text-muted small position-absolute top-1 start-2">{dayNum}</span>
+                                <div className="mt-3 overflow-y-auto" style={{ maxHeight: '75px', scrollbarWidth: 'none' }}>
+                                  {dayApps.map(app => {
+                                    const pat = patients.find(p => p._id === app.user);
+                                    const patName = pat ? pat.name : 'Patient';
+                                    
+                                    return (
+                                      <div 
+                                        key={app._id}
+                                        className={`p-1 mb-1 rounded text-white text-truncate text-start`}
+                                        style={{ 
+                                          fontSize: '9px', 
+                                          cursor: 'pointer',
+                                          lineHeight: '1.2',
+                                          backgroundColor: app.status === 'Approved' ? '#198754' : app.status === 'Completed' ? '#0dcaf0' : app.status === 'Cancelled' ? '#dc3545' : '#ffc107',
+                                          color: app.status === 'Scheduled' ? '#212529' : '#fff'
+                                        }}
+                                        onClick={() => {
+                                          if (app.status === 'Approved') {
+                                            startCheckup(app);
+                                          } else if (app.status === 'Scheduled') {
+                                            updateStatus(app._id, 'Approved');
+                                          }
+                                        }}
+                                        title={`${patName} - ${app.time} - ${app.problem} (${app.status}) [Click to manage]`}
+                                      >
+                                        <strong className="d-block">{app.time}</strong>
+                                        <span>{patName}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {/* End offset padding cells */}
+                          {Array((7 - ((new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay() + new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()) % 7)) % 7).fill(null).map((_, idx) => (
+                            <div key={`empty-end-${idx}`} className="col border-bottom border-end bg-light" style={{ width: '14.28%', flex: '0 0 14.28%', minHeight: '100px', opacity: 0.4 }}></div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>

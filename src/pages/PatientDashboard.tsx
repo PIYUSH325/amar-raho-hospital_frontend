@@ -29,6 +29,8 @@ export const PatientDashboard: React.FC = () => {
   }, [location.search]);
 
   const [activeTab, setActiveTab] = useState<'bookings' | 'profile' | 'records' | 'todo' | 'nutrition' | 'fitness' | 'General Habits' | 'chats'>('bookings');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [currentDate, setCurrentDate] = useState(new Date());
   
   // States
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -302,55 +304,150 @@ export const PatientDashboard: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  {/* TAB 1: BOOKINGS LIST */}
+                  {/* TAB 1: BOOKINGS LIST & CALENDAR */}
                   {activeTab === 'bookings' && (
                     <div>
-                      <h3 className="mb-4 fw-bold text-dark">My Booked Appointments</h3>
-                      {appointments.length === 0 ? (
-                        <div className="text-center py-5 text-muted">
-                          <i className="fa fa-calendar-times fa-3x mb-3 text-muted"></i>
-                          <p>You have not booked any appointments yet.</p>
+                      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-4">
+                        <h3 className="fw-bold text-dark m-0">My Booked Appointments</h3>
+                        <div className="btn-group border shadow-sm rounded-pill overflow-hidden">
+                          <button 
+                            className={`btn btn-sm px-3 border-0 rounded-0 ${viewMode === 'list' ? 'btn-primary' : 'btn-light text-dark'}`} 
+                            onClick={() => setViewMode('list')}
+                          >
+                            <i className="fa fa-list me-1"></i> List View
+                          </button>
+                          <button 
+                            className={`btn btn-sm px-3 border-0 rounded-0 ${viewMode === 'calendar' ? 'btn-primary' : 'btn-light text-dark'}`} 
+                            onClick={() => setViewMode('calendar')}
+                          >
+                            <i className="fa fa-calendar me-1"></i> Calendar View
+                          </button>
                         </div>
-                      ) : (
-                        <div className="table-responsive">
-                          <table className="table table-hover align-middle">
-                            <thead className="table-light">
-                              <tr>
-                                <th>Doctor</th>
-                                <th>Date / Time</th>
-                                <th>Problem</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {appointments.map((app) => (
-                                <tr key={app._id}>
-                                  <td><span className="badge bg-light text-dark text-capitalize">{app.doctor}</span></td>
-                                  <td>
-                                    <div>{app.date}</div>
-                                    <small className="text-muted">{app.time}</small>
-                                  </td>
-                                  <td style={{ maxWidth: '250px', wordBreak: 'break-all' }}>{app.problem}</td>
-                                  <td>
-                                    <span className={`badge ${app.status === 'Approved' ? 'bg-success' : app.status === 'Scheduled' ? 'bg-primary' : app.status === 'Completed' ? 'bg-info' : 'bg-secondary'}`}>
-                                      {app.status}
-                                    </span>
-                                  </td>
-                                  <td>
-                                    {(app.status === 'Scheduled' || app.status === 'Approved') && (
-                                      <button 
-                                        className="btn btn-sm btn-outline-danger"
-                                        onClick={() => handleCancelBooking(app._id)}
-                                      >
-                                        Cancel
-                                      </button>
-                                    )}
-                                  </td>
+                      </div>
+
+                      {viewMode === 'list' ? (
+                        appointments.length === 0 ? (
+                          <div className="text-center py-5 text-muted">
+                            <i className="fa fa-calendar-times fa-3x mb-3 text-muted"></i>
+                            <p>You have not booked any appointments yet.</p>
+                          </div>
+                        ) : (
+                          <div className="table-responsive">
+                            <table className="table table-hover align-middle">
+                              <thead className="table-light">
+                                <tr>
+                                  <th>Doctor</th>
+                                  <th>Date / Time</th>
+                                  <th>Problem</th>
+                                  <th>Status</th>
+                                  <th>Action</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                              </thead>
+                              <tbody>
+                                {appointments.map((app) => (
+                                  <tr key={app._id}>
+                                    <td><span className="badge bg-light text-dark text-capitalize">{app.doctor}</span></td>
+                                    <td>
+                                      <div>{app.date}</div>
+                                      <small className="text-muted">{app.time}</small>
+                                    </td>
+                                    <td style={{ maxWidth: '250px', wordBreak: 'break-all' }}>{app.problem}</td>
+                                    <td>
+                                      <span className={`badge ${app.status === 'Approved' ? 'bg-success' : app.status === 'Scheduled' ? 'bg-primary' : app.status === 'Completed' ? 'bg-info' : 'bg-secondary'}`}>
+                                        {app.status}
+                                      </span>
+                                    </td>
+                                    <td>
+                                      {(app.status === 'Scheduled' || app.status === 'Approved') && (
+                                        <button 
+                                          className="btn btn-sm btn-outline-danger"
+                                          onClick={() => handleCancelBooking(app._id)}
+                                        >
+                                          Cancel
+                                        </button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )
+                      ) : (
+                        /* 📅 REACT CALENDAR GRID */
+                        <div className="card p-3 p-md-4 border rounded-4 shadow-sm bg-white overflow-hidden">
+                          <div className="d-flex justify-content-between align-items-center mb-4">
+                            <button 
+                              className="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center" 
+                              style={{ width: '32px', height: '32px' }}
+                              onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}
+                            >
+                              <i className="fa fa-chevron-left"></i>
+                            </button>
+                            <h4 className="fw-bold m-0 text-capitalize text-dark text-center">
+                              {currentDate.toLocaleString('default', { month: 'long' })} {currentDate.getFullYear()}
+                            </h4>
+                            <button 
+                              className="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center" 
+                              style={{ width: '32px', height: '32px' }}
+                              onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}
+                            >
+                              <i className="fa fa-chevron-right"></i>
+                            </button>
+                          </div>
+
+                          {/* Days Header */}
+                          <div className="row text-center fw-bold text-muted small py-2 mb-2 border-bottom">
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                              <div key={d} className="col text-center" style={{ width: '14.28%', flex: '0 0 14.28%' }}>{d}</div>
+                            ))}
+                          </div>
+
+                          {/* Days Grid */}
+                          <div className="row g-0 border-start border-top">
+                            {/* Empty offset padding cells */}
+                            {Array(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay()).fill(null).map((_, idx) => (
+                              <div key={`empty-${idx}`} className="col border-bottom border-end bg-light" style={{ width: '14.28%', flex: '0 0 14.28%', minHeight: '90px', opacity: 0.4 }}></div>
+                            ))}
+
+                            {/* Month Days */}
+                            {Array(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()).fill(null).map((_, idx) => {
+                              const dayNum = idx + 1;
+                              const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                              
+                              // Find appointments matching this date
+                              const dayApps = appointments.filter(app => app.date === dateStr);
+
+                              return (
+                                <div key={dayNum} className="col border-bottom border-end p-2 position-relative bg-white" style={{ width: '14.28%', flex: '0 0 14.28%', minHeight: '90px' }}>
+                                  <span className="fw-bold text-muted small position-absolute top-1 start-2">{dayNum}</span>
+                                  <div className="mt-3 overflow-y-auto" style={{ maxHeight: '65px', scrollbarWidth: 'none' }}>
+                                    {dayApps.map(app => (
+                                      <div 
+                                        key={app._id}
+                                        className={`p-1 mb-1 rounded text-white text-truncate`}
+                                        style={{ 
+                                          fontSize: '9px', 
+                                          cursor: 'pointer',
+                                          lineHeight: '1.2',
+                                          backgroundColor: app.status === 'Approved' ? '#198754' : app.status === 'Cancelled' ? '#6c757d' : '#0d6efd'
+                                        }}
+                                        title={`${app.doctor} - ${app.time} (${app.status})`}
+                                      >
+                                        <strong className="d-block">{app.time}</strong>
+                                        <span>{app.doctor}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+
+                            {/* End offset padding cells to fill the last week row */}
+                            {Array((7 - ((new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay() + new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()) % 7)) % 7).fill(null).map((_, idx) => (
+                              <div key={`empty-end-${idx}`} className="col border-bottom border-end bg-light" style={{ width: '14.28%', flex: '0 0 14.28%', minHeight: '90px', opacity: 0.4 }}></div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
