@@ -53,8 +53,12 @@ export const PatientDashboard: React.FC = () => {
   // Weekly Diet & Compliance states
   const [weeklyPlan, setWeeklyPlan] = useState<any>(null);
   const [complianceToday, setComplianceToday] = useState<any>(null);
+  const [monthlyCompliance, setMonthlyCompliance] = useState<any[]>([]);
   const [loadingDiet, setLoadingDiet] = useState(false);
-  const [activeWeeklyTab, setActiveWeeklyTab] = useState<'today' | 'week'>('today');
+  const [activeWeeklyTab, setActiveWeeklyTab] = useState<'today' | 'week' | 'month'>('today');
+  const [selectedDietDay, setSelectedDietDay] = useState<string>(
+    new Date().toLocaleString('en-US', { weekday: 'long' }).toLowerCase()
+  );
 
   const loadDietData = async () => {
     setLoadingDiet(true);
@@ -64,11 +68,21 @@ export const PatientDashboard: React.FC = () => {
         setWeeklyPlan(planRes.data);
       }
       
-      const todayStr = new Date().toISOString().split('T')[0];
-      const logsRes = await fetchComplianceLogs('me', todayStr, todayStr);
-      if (logsRes.success && logsRes.data && logsRes.data.length > 0) {
-        setComplianceToday(logsRes.data[0]);
+      // Calculate first and last date of the current month
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      
+      const logsRes = await fetchComplianceLogs('me', firstDay, lastDay);
+      if (logsRes.success && logsRes.data) {
+        setMonthlyCompliance(logsRes.data);
+        
+        // Populate complianceToday for the current date
+        const todayStr = now.toISOString().split('T')[0];
+        const todayLog = logsRes.data.find((log: any) => log.date === todayStr);
+        setComplianceToday(todayLog || null);
       } else {
+        setMonthlyCompliance([]);
         setComplianceToday(null);
       }
     } catch (err: any) {
@@ -805,7 +819,7 @@ export const PatientDashboard: React.FC = () => {
 
                       {/* 7-DAY WEEKLY MEALS & ADHERENCE LOGS */}
                       <div className="card border-0 shadow-sm rounded-4 p-4 mt-5 bg-white">
-                        <div className="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                        <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-4 pb-2 border-bottom">
                           <div>
                             <h4 className="fw-bold text-dark m-0">🥗 Weekly Diet Calendar & Meal Adherence</h4>
                             <p className="text-muted small m-0">Track your daily meal compliance as assigned by your doctor.</p>
@@ -818,7 +832,7 @@ export const PatientDashboard: React.FC = () => {
                               className={`btn btn-xs rounded-pill px-3 py-1 fw-bold ${activeWeeklyTab === 'today' ? 'btn-success text-white shadow-sm' : 'btn-light text-muted border-0 bg-transparent'}`}
                               onClick={() => setActiveWeeklyTab('today')}
                             >
-                              Today
+                              Day Timeline
                             </button>
                             <button
                               type="button"
@@ -826,6 +840,13 @@ export const PatientDashboard: React.FC = () => {
                               onClick={() => setActiveWeeklyTab('week')}
                             >
                               7-Day Plan
+                            </button>
+                            <button
+                              type="button"
+                              className={`btn btn-xs rounded-pill px-3 py-1 fw-bold ${activeWeeklyTab === 'month' ? 'btn-success text-white shadow-sm' : 'btn-light text-muted border-0 bg-transparent'}`}
+                              onClick={() => setActiveWeeklyTab('month')}
+                            >
+                              Month Streak
                             </button>
                           </div>
                         </div>
@@ -842,18 +863,20 @@ export const PatientDashboard: React.FC = () => {
                             <p className="small text-muted mt-1">Consult with your physician to create a structured meal plan.</p>
                           </div>
                         ) : activeWeeklyTab === 'today' ? (
-                          /* TODAY'S COMPLIANCE LOG CARD */
+                          /* TODAY'S COMPLIANCE LOG CARD WITH DAY SELECTOR */
                           <div>
                             {(() => {
                               const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                              const todayIndex = new Date().getDay();
-                              const todayName = dayNames[todayIndex] as any;
-                              const todayPlan = weeklyPlan[todayName] || {};
+                              const todayName = dayNames[new Date().getDay()];
+                              
+                              const dayPlan = weeklyPlan[selectedDietDay] || {};
+                              const isRealToday = todayName === selectedDietDay;
+
                               const mealSlots = [
-                                { key: 'breakfast', label: '🍳 Breakfast', desc: todayPlan.breakfast },
-                                { key: 'lunch', label: '☀️ Lunch', desc: todayPlan.lunch },
-                                { key: 'snacks', label: '🍎 Snacks', desc: todayPlan.snacks },
-                                { key: 'dinner', label: '🌙 Dinner', desc: todayPlan.dinner }
+                                { key: 'breakfast', label: '🍳 Breakfast', desc: dayPlan.breakfast },
+                                { key: 'lunch', label: '☀️ Lunch', desc: dayPlan.lunch },
+                                { key: 'snacks', label: '🍎 Snacks', desc: dayPlan.snacks },
+                                { key: 'dinner', label: '🌙 Dinner', desc: dayPlan.dinner }
                               ];
 
                               const handleLogAdherence = async (mealSlot: string, status: string) => {
@@ -867,47 +890,79 @@ export const PatientDashboard: React.FC = () => {
                               };
 
                               return (
-                                <div className="row g-3 text-start">
-                                  <h6 className="fw-bold text-success mb-2 text-capitalize">
-                                    Today's Meals ({todayName}):
+                                <div className="text-start">
+                                  {/* Day Selector Pills */}
+                                  <div className="d-flex flex-wrap gap-2 mb-4 border-bottom pb-3">
+                                    {dayNames.map((dName) => {
+                                      const isSelected = selectedDietDay === dName;
+                                      const isActualToday = todayName === dName;
+                                      return (
+                                        <button
+                                          key={dName}
+                                          type="button"
+                                          className={`btn btn-sm rounded-pill px-3 py-1 text-capitalize fw-semibold ${
+                                            isSelected ? 'btn-success text-white shadow-sm' : 'btn-outline-secondary bg-white'
+                                          } ${isActualToday ? 'border-success border-2' : ''}`}
+                                          onClick={() => setSelectedDietDay(dName)}
+                                        >
+                                          {dName.substring(0, 3)} {isActualToday ? '•' : ''}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+
+                                  <h6 className="fw-bold text-success mb-3 text-capitalize">
+                                    Meals for {selectedDietDay} {isRealToday ? "(Today • Loggable)" : "(Preview Only)"}:
                                   </h6>
-                                  {mealSlots.map((slot) => {
-                                    const activeStatus = complianceToday?.meals?.[slot.key] || 'Pending';
-                                    return (
-                                      <div key={slot.key} className="col-12">
-                                        <div className="p-3 border rounded-3 bg-light-subtle d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
-                                          <div>
-                                            <span className="fw-bold text-dark d-block mb-1">{slot.label}</span>
-                                            <span className="text-secondary small">{slot.desc || 'No specific meal assigned.'}</span>
-                                          </div>
-                                          
-                                          {slot.desc && (
-                                            <div className="d-flex align-items-center gap-2">
-                                              <button
-                                                type="button"
-                                                className={`btn btn-sm px-3 rounded-pill fw-bold ${activeStatus === 'Followed' ? 'btn-success text-white' : 'btn-outline-success bg-white'}`}
-                                                onClick={() => handleLogAdherence(slot.key, 'Followed')}
-                                              >
-                                                🟢 Followed
-                                              </button>
-                                              <button
-                                                type="button"
-                                                className={`btn btn-sm px-3 rounded-pill fw-bold ${activeStatus === 'Skipped' ? 'btn-danger text-white' : 'btn-outline-danger bg-white'}`}
-                                                onClick={() => handleLogAdherence(slot.key, 'Skipped')}
-                                              >
-                                                🔴 Skipped
-                                              </button>
+
+                                  <div className="row g-3">
+                                    {mealSlots.map((slot) => {
+                                      const activeStatus = isRealToday 
+                                        ? (complianceToday?.meals?.[slot.key] || 'Pending')
+                                        : 'Pending';
+
+                                      return (
+                                        <div key={slot.key} className="col-12">
+                                          <div className="p-3 border rounded-3 bg-light-subtle d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+                                            <div>
+                                              <span className="fw-bold text-dark d-block mb-1">{slot.label}</span>
+                                              <span className="text-secondary small">{slot.desc || 'No specific meal assigned.'}</span>
                                             </div>
-                                          )}
+                                            
+                                            {slot.desc && (
+                                              <div className="d-flex align-items-center gap-2">
+                                                {isRealToday ? (
+                                                  <>
+                                                    <button
+                                                      type="button"
+                                                      className={`btn btn-sm px-3 rounded-pill fw-bold ${activeStatus === 'Followed' ? 'btn-success text-white shadow-sm' : 'btn-outline-success bg-white'}`}
+                                                      onClick={() => handleLogAdherence(slot.key, 'Followed')}
+                                                    >
+                                                      🟢 Followed
+                                                    </button>
+                                                    <button
+                                                      type="button"
+                                                      className={`btn btn-sm px-3 rounded-pill fw-bold ${activeStatus === 'Skipped' ? 'btn-danger text-white shadow-sm' : 'btn-outline-danger bg-white'}`}
+                                                      onClick={() => handleLogAdherence(slot.key, 'Skipped')}
+                                                    >
+                                                      🔴 Skipped
+                                                    </button>
+                                                  </>
+                                                ) : (
+                                                  <span className="badge bg-light border text-muted px-2 py-1">ReadOnly</span>
+                                                )}
+                                              </div>
+                                            )}
+                                          </div>
                                         </div>
-                                      </div>
-                                    );
-                                  })}
+                                      );
+                                    })}
+                                  </div>
                                 </div>
                               );
                             })()}
                           </div>
-                        ) : (
+                        ) : activeWeeklyTab === 'week' ? (
                           /* 7-DAY SCHEDULE VIEW CALENDAR */
                           <div className="table-responsive rounded-3 border">
                             <table className="table align-middle mb-0 text-start">
@@ -935,6 +990,109 @@ export const PatientDashboard: React.FC = () => {
                                 })}
                               </tbody>
                             </table>
+                          </div>
+                        ) : (
+                          /* 📅 MONTH STREAK HEATMAP VIEW */
+                          <div className="p-3 border rounded-4 bg-white shadow-sm">
+                            {(() => {
+                              const now = new Date();
+                              const cYear = now.getFullYear();
+                              const cMonth = now.getMonth();
+                              
+                              const mDays = new Date(cYear, cMonth + 1, 0).getDate();
+                              const fDayIndex = new Date(cYear, cMonth, 1).getDay();
+
+                              const mName = now.toLocaleString('default', { month: 'long' });
+
+                              // Count total metrics
+                              let perfectDays = 0;
+                              let partialDays = 0;
+                              let skippedDays = 0;
+
+                              monthlyCompliance.forEach((log) => {
+                                const states = Object.values(log.meals || {});
+                                const followed = states.filter(s => s === 'Followed').length;
+                                const skipped = states.filter(s => s === 'Skipped').length;
+                                
+                                if (followed === 4) perfectDays++;
+                                else if (followed > 0) partialDays++;
+                                else if (skipped > 0) skippedDays++;
+                              });
+
+                              return (
+                                <div>
+                                  <div className="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3 bg-light p-3 rounded-3">
+                                    <h5 className="fw-bold text-dark m-0">📅 {mName} {cYear} Dashboard</h5>
+                                    <div className="d-flex flex-wrap gap-2 small">
+                                      <span className="badge bg-success px-2 py-1">🟢 Perfect: {perfectDays} Days</span>
+                                      <span className="badge bg-warning text-dark px-2 py-1">🟡 Partial: {partialDays} Days</span>
+                                      <span className="badge bg-danger px-2 py-1">🔴 Missed: {skippedDays} Days</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Weekdays Header */}
+                                  <div className="row text-center fw-bold text-muted small py-2 mb-2 border-bottom">
+                                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                                      <div key={d} className="col text-center" style={{ width: '14.28%', flex: '0 0 14.28%' }}>{d}</div>
+                                    ))}
+                                  </div>
+
+                                  {/* Calendar Grid */}
+                                  <div className="row g-0 border-start border-top">
+                                    {/* Offset cells */}
+                                    {Array(fDayIndex).fill(null).map((_, idx) => (
+                                      <div key={`empty-${idx}`} className="col border-bottom border-end bg-light" style={{ width: '14.28%', flex: '0 0 14.28%', minHeight: '65px', opacity: 0.3 }}></div>
+                                    ))}
+
+                                    {/* Month cells */}
+                                    {Array(mDays).fill(null).map((_, idx) => {
+                                      const dNum = idx + 1;
+                                      const dateStr = `${cYear}-${String(cMonth + 1).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
+                                      
+                                      const dayLog = monthlyCompliance.find(log => log.date === dateStr);
+                                      
+                                      let statusColor = 'bg-light text-muted';
+                                      let titleText = 'No logs registered';
+
+                                      if (dayLog && dayLog.meals) {
+                                        const meals = Object.values(dayLog.meals);
+                                        const followed = meals.filter(m => m === 'Followed').length;
+                                        const skipped = meals.filter(m => m === 'Skipped').length;
+                                        
+                                        titleText = `Followed: ${followed}, Skipped: ${skipped}`;
+
+                                        if (followed === 4) {
+                                          statusColor = 'bg-success text-white shadow-sm';
+                                        } else if (followed > 0) {
+                                          statusColor = 'bg-warning text-dark shadow-sm';
+                                        } else if (skipped > 0) {
+                                          statusColor = 'bg-danger text-white shadow-sm';
+                                        }
+                                      }
+
+                                      return (
+                                        <div key={dNum} className="col border-bottom border-end p-2 d-flex flex-column align-items-center justify-content-center bg-white" style={{ width: '14.28%', flex: '0 0 14.28%', minHeight: '65px' }}>
+                                          <div 
+                                            className={`rounded-circle d-flex align-items-center justify-content-center fw-bold`} 
+                                            style={{ width: '36px', height: '36px', fontSize: '13px', cursor: 'help' }}
+                                            title={titleText}
+                                          >
+                                            <span className={`w-100 h-100 rounded-circle d-flex align-items-center justify-content-center ${statusColor}`}>
+                                              {dNum}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+
+                                    {/* End offset cells */}
+                                    {Array((7 - ((fDayIndex + mDays) % 7)) % 7).fill(null).map((_, idx) => (
+                                      <div key={`empty-end-${idx}`} className="col border-bottom border-end bg-light" style={{ width: '14.28%', flex: '0 0 14.28%', minHeight: '65px', opacity: 0.3 }}></div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                         )}
                       </div>
