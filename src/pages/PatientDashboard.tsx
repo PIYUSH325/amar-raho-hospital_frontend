@@ -863,7 +863,7 @@ export const PatientDashboard: React.FC = () => {
                             <p className="small text-muted mt-1">Consult with your physician to create a structured meal plan.</p>
                           </div>
                         ) : activeWeeklyTab === 'today' ? (
-                          /* TODAY'S COMPLIANCE LOG CARD WITH DAY SELECTOR */
+                          /* TODAY'S COMPLIANCE LOG CARD WITH HOUR-BASED VERTICAL TIMELINE */
                           <div>
                             {(() => {
                               const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -873,10 +873,10 @@ export const PatientDashboard: React.FC = () => {
                               const isRealToday = todayName === selectedDietDay;
 
                               const mealSlots = [
-                                { key: 'breakfast', label: '🍳 Breakfast', desc: dayPlan.breakfast },
-                                { key: 'lunch', label: '☀️ Lunch', desc: dayPlan.lunch },
-                                { key: 'snacks', label: '🍎 Snacks', desc: dayPlan.snacks },
-                                { key: 'dinner', label: '🌙 Dinner', desc: dayPlan.dinner }
+                                { key: 'breakfast', time: '08:30 AM', label: '🍳 Breakfast', desc: dayPlan.breakfast },
+                                { key: 'lunch', time: '01:30 PM', label: '☀️ Lunch', desc: dayPlan.lunch },
+                                { key: 'snacks', time: '05:00 PM', label: '🍎 Snacks', desc: dayPlan.snacks },
+                                { key: 'dinner', time: '08:30 PM', label: '🌙 Dinner', desc: dayPlan.dinner }
                               ];
 
                               const handleLogAdherence = async (mealSlot: string, status: string) => {
@@ -911,48 +911,60 @@ export const PatientDashboard: React.FC = () => {
                                     })}
                                   </div>
 
-                                  <h6 className="fw-bold text-success mb-3 text-capitalize">
-                                    Meals for {selectedDietDay} {isRealToday ? "(Today • Loggable)" : "(Preview Only)"}:
+                                  <h6 className="fw-bold text-success mb-4 text-capitalize d-flex align-items-center">
+                                    <i className="fa fa-clock me-2"></i> Hour-wise Plan for {selectedDietDay} {isRealToday ? "(Today - Loggable)" : "(Preview Only)"}:
                                   </h6>
 
-                                  <div className="row g-3">
+                                  {/* Vertical Timeline */}
+                                  <div className="position-relative border-start border-2 border-light ms-3 ps-4">
                                     {mealSlots.map((slot) => {
                                       const activeStatus = isRealToday 
                                         ? (complianceToday?.meals?.[slot.key] || 'Pending')
                                         : 'Pending';
 
                                       return (
-                                        <div key={slot.key} className="col-12">
-                                          <div className="p-3 border rounded-3 bg-light-subtle d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
-                                            <div>
-                                              <span className="fw-bold text-dark d-block mb-1">{slot.label}</span>
-                                              <span className="text-secondary small">{slot.desc || 'No specific meal assigned.'}</span>
-                                            </div>
-                                            
-                                            {slot.desc && (
-                                              <div className="d-flex align-items-center gap-2">
-                                                {isRealToday ? (
-                                                  <>
-                                                    <button
-                                                      type="button"
-                                                      className={`btn btn-sm px-3 rounded-pill fw-bold ${activeStatus === 'Followed' ? 'btn-success text-white shadow-sm' : 'btn-outline-success bg-white'}`}
-                                                      onClick={() => handleLogAdherence(slot.key, 'Followed')}
-                                                    >
-                                                      🟢 Followed
-                                                    </button>
-                                                    <button
-                                                      type="button"
-                                                      className={`btn btn-sm px-3 rounded-pill fw-bold ${activeStatus === 'Skipped' ? 'btn-danger text-white shadow-sm' : 'btn-outline-danger bg-white'}`}
-                                                      onClick={() => handleLogAdherence(slot.key, 'Skipped')}
-                                                    >
-                                                      🔴 Skipped
-                                                    </button>
-                                                  </>
-                                                ) : (
-                                                  <span className="badge bg-light border text-muted px-2 py-1">ReadOnly</span>
-                                                )}
+                                        <div key={slot.key} className="mb-4 position-relative">
+                                          {/* Timeline dot */}
+                                          <div 
+                                            className="position-absolute rounded-circle bg-white border border-3 border-success" 
+                                            style={{ width: '16px', height: '16px', left: '-33px', top: '5px' }}
+                                          ></div>
+                                          
+                                          <div className="card border-light shadow-sm rounded-3 p-3 bg-light-subtle">
+                                            <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
+                                              <div>
+                                                <span className="badge bg-secondary-subtle text-secondary fw-semibold mb-1" style={{ fontSize: '10px' }}>
+                                                  <i className="fa fa-clock me-1"></i> {slot.time}
+                                                </span>
+                                                <h6 className="fw-bold text-dark m-0 mb-1">{slot.label}</h6>
+                                                <span className="text-secondary small">{slot.desc || 'No meal scheduled.'}</span>
                                               </div>
-                                            )}
+                                              
+                                              {slot.desc && (
+                                                <div className="d-flex align-items-center gap-2">
+                                                  {isRealToday ? (
+                                                    <>
+                                                      <button
+                                                        type="button"
+                                                        className={`btn btn-sm px-3 rounded-pill fw-bold ${activeStatus === 'Followed' ? 'btn-success text-white shadow-sm' : 'btn-outline-success bg-white'}`}
+                                                        onClick={() => handleLogAdherence(slot.key, 'Followed')}
+                                                      >
+                                                        🟢 Followed
+                                                      </button>
+                                                      <button
+                                                        type="button"
+                                                        className={`btn btn-sm px-3 rounded-pill fw-bold ${activeStatus === 'Skipped' ? 'btn-danger text-white shadow-sm' : 'btn-outline-danger bg-white'}`}
+                                                        onClick={() => handleLogAdherence(slot.key, 'Skipped')}
+                                                      >
+                                                        🔴 Skipped
+                                                      </button>
+                                                    </>
+                                                  ) : (
+                                                    <span className="badge bg-light border text-muted px-2 py-1">ReadOnly</span>
+                                                  )}
+                                                </div>
+                                              )}
+                                            </div>
                                           </div>
                                         </div>
                                       );
@@ -992,16 +1004,16 @@ export const PatientDashboard: React.FC = () => {
                             </table>
                           </div>
                         ) : (
-                          /* 📅 MONTH STREAK HEATMAP VIEW */
-                          <div className="p-3 border rounded-4 bg-white shadow-sm">
+                          /* 📅 DETAILED MONTH MEAL BADGES CALENDAR VIEW */
+                          <div className="p-3 border rounded-4 bg-white shadow-sm overflow-hidden">
                             {(() => {
                               const now = new Date();
                               const cYear = now.getFullYear();
                               const cMonth = now.getMonth();
+                              const todayStr = now.toISOString().split('T')[0];
                               
                               const mDays = new Date(cYear, cMonth + 1, 0).getDate();
                               const fDayIndex = new Date(cYear, cMonth, 1).getDay();
-
                               const mName = now.toLocaleString('default', { month: 'long' });
 
                               // Count total metrics
@@ -1041,45 +1053,54 @@ export const PatientDashboard: React.FC = () => {
                                   <div className="row g-0 border-start border-top">
                                     {/* Offset cells */}
                                     {Array(fDayIndex).fill(null).map((_, idx) => (
-                                      <div key={`empty-${idx}`} className="col border-bottom border-end bg-light" style={{ width: '14.28%', flex: '0 0 14.28%', minHeight: '65px', opacity: 0.3 }}></div>
+                                      <div key={`empty-${idx}`} className="col border-bottom border-end bg-light" style={{ width: '14.28%', flex: '0 0 14.28%', minHeight: '120px', opacity: 0.3 }}></div>
                                     ))}
 
-                                    {/* Month cells */}
+                                    {/* Month cells with meal details */}
                                     {Array(mDays).fill(null).map((_, idx) => {
                                       const dNum = idx + 1;
                                       const dateStr = `${cYear}-${String(cMonth + 1).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
                                       
+                                      const dOfWeek = new Date(cYear, cMonth, dNum).toLocaleString('en-US', { weekday: 'long' }).toLowerCase();
+                                      const dayPlan = weeklyPlan[dOfWeek] || {};
                                       const dayLog = monthlyCompliance.find(log => log.date === dateStr);
-                                      
-                                      let statusColor = 'bg-light text-muted';
-                                      let titleText = 'No logs registered';
 
-                                      if (dayLog && dayLog.meals) {
-                                        const meals = Object.values(dayLog.meals);
-                                        const followed = meals.filter(m => m === 'Followed').length;
-                                        const skipped = meals.filter(m => m === 'Skipped').length;
-                                        
-                                        titleText = `Followed: ${followed}, Skipped: ${skipped}`;
-
-                                        if (followed === 4) {
-                                          statusColor = 'bg-success text-white shadow-sm';
-                                        } else if (followed > 0) {
-                                          statusColor = 'bg-warning text-dark shadow-sm';
-                                        } else if (skipped > 0) {
-                                          statusColor = 'bg-danger text-white shadow-sm';
-                                        }
-                                      }
+                                      const mealsList = [
+                                        { key: 'breakfast', label: '🍳', name: dayPlan.breakfast },
+                                        { key: 'lunch', label: '☀️', name: dayPlan.lunch },
+                                        { key: 'snacks', label: '🍎', name: dayPlan.snacks },
+                                        { key: 'dinner', label: '🌙', name: dayPlan.dinner }
+                                      ];
 
                                       return (
-                                        <div key={dNum} className="col border-bottom border-end p-2 d-flex flex-column align-items-center justify-content-center bg-white" style={{ width: '14.28%', flex: '0 0 14.28%', minHeight: '65px' }}>
-                                          <div 
-                                            className={`rounded-circle d-flex align-items-center justify-content-center fw-bold`} 
-                                            style={{ width: '36px', height: '36px', fontSize: '13px', cursor: 'help' }}
-                                            title={titleText}
-                                          >
-                                            <span className={`w-100 h-100 rounded-circle d-flex align-items-center justify-content-center ${statusColor}`}>
-                                              {dNum}
-                                            </span>
+                                        <div key={dNum} className="col border-bottom border-end p-2 d-flex flex-column bg-white text-start" style={{ width: '14.28%', flex: '0 0 14.28%', minHeight: '130px' }}>
+                                          <span className="fw-bold text-muted small mb-1">{dNum}</span>
+                                          <div className="overflow-y-auto w-100" style={{ maxHeight: '100px', scrollbarWidth: 'none' }}>
+                                            {mealsList.map((m) => {
+                                              if (!m.name) return null;
+
+                                              const status = dayLog?.meals?.[m.key] || 'Pending';
+                                              
+                                              let badgeColor = 'bg-light text-secondary border';
+                                              if (status === 'Followed') badgeColor = 'bg-success text-white';
+                                              else if (status === 'Skipped') badgeColor = 'bg-danger text-white';
+                                              else if (dateStr === todayStr) badgeColor = 'bg-warning text-dark';
+
+                                              const cleanText = m.name.substring(0, 18) + (m.name.length > 18 ? '...' : '');
+
+                                              return (
+                                                <div 
+                                                  key={m.key} 
+                                                  className={`p-1 mb-1 rounded text-truncate`} 
+                                                  style={{ fontSize: '8.5px', lineHeight: '1.2', cursor: 'help' }}
+                                                  title={`${m.key.toUpperCase()}: ${m.name} (${status})`}
+                                                >
+                                                  <span className={`px-1 py-0.5 rounded d-block ${badgeColor}`}>
+                                                    {m.label} {cleanText}
+                                                  </span>
+                                                </div>
+                                              );
+                                            })}
                                           </div>
                                         </div>
                                       );
@@ -1087,7 +1108,7 @@ export const PatientDashboard: React.FC = () => {
 
                                     {/* End offset cells */}
                                     {Array((7 - ((fDayIndex + mDays) % 7)) % 7).fill(null).map((_, idx) => (
-                                      <div key={`empty-end-${idx}`} className="col border-bottom border-end bg-light" style={{ width: '14.28%', flex: '0 0 14.28%', minHeight: '65px', opacity: 0.3 }}></div>
+                                      <div key={`empty-end-${idx}`} className="col border-bottom border-end bg-light" style={{ width: '14.28%', flex: '0 0 14.28%', minHeight: '120px', opacity: 0.3 }}></div>
                                     ))}
                                   </div>
                                 </div>
