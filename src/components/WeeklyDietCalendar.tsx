@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { fetchDietPlan, fetchComplianceLogs, saveComplianceLog } from '../services/diet';
 
+const formatDateDisplay = (dateStr: string) => {
+  if (!dateStr) return 'Any';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${parts[2]}-${months[parseInt(parts[1], 10) - 1]}-${parts[0]}`;
+};
+
 export const WeeklyDietCalendar: React.FC = () => {
   // Weekly Diet & Compliance states
   const [weeklyPlan, setWeeklyPlan] = useState<any>(null);
@@ -41,7 +49,7 @@ export const WeeklyDietCalendar: React.FC = () => {
         setMonthlyCompliance(logsRes.data);
         
         // Populate complianceToday for the current date
-        const todayStr = now.toISOString().split('T')[0];
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         const todayLog = logsRes.data.find((log: any) => log.date === todayStr);
         setComplianceToday(todayLog || null);
       } else {
@@ -80,9 +88,22 @@ export const WeeklyDietCalendar: React.FC = () => {
   return (
     <div className="card border-0 shadow-sm rounded-4 p-4 mt-5 bg-white">
       <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-4 pb-2 border-bottom">
-        <div>
+        <div className="text-start">
           <h4 className="fw-bold text-dark m-0">🥗 Weekly Diet Calendar & Meal Adherence</h4>
-          <p className="text-muted small m-0">Track your daily meal compliance as assigned by your doctor.</p>
+          <p className="text-muted small m-0 mb-2">Track your daily meal compliance as assigned by your doctor.</p>
+          {weeklyPlan && (
+            <div className="d-flex align-items-center mt-1">
+              {weeklyPlan.startDate || weeklyPlan.endDate ? (
+                <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-bold" style={{ fontSize: '11px' }}>
+                  📅 Diet Plan Period: {formatDateDisplay(weeklyPlan.startDate)} to {formatDateDisplay(weeklyPlan.endDate)}
+                </span>
+              ) : (
+                <span className="badge bg-light text-muted border rounded-pill px-3 py-1 fw-semibold" style={{ fontSize: '11px' }}>
+                  📅 Ongoing Diet Schedule
+                </span>
+              )}
+            </div>
+          )}
         </div>
         
         {/* Segment Selector tabs */}
@@ -145,7 +166,8 @@ export const WeeklyDietCalendar: React.FC = () => {
               { key: 'dinner', time: '08:30 PM', label: '🌙 Dinner', desc: dayPlan.dinner }
             ];
 
-            const todayStr = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             const isWithinRange = (!weeklyPlan.startDate || todayStr >= weeklyPlan.startDate) && 
                                   (!weeklyPlan.endDate || todayStr <= weeklyPlan.endDate);
 
@@ -167,7 +189,7 @@ export const WeeklyDietCalendar: React.FC = () => {
                     <div>
                       <h6 className="fw-bold m-0 text-warning-emphasis">Diet Plan Inactive Today</h6>
                       <p className="small m-0 text-muted">
-                        This schedule is active from <strong>{weeklyPlan.startDate || 'Any'}</strong> to <strong>{weeklyPlan.endDate || 'Any'}</strong>. You cannot log meals today.
+                        This schedule is active from <strong>{formatDateDisplay(weeklyPlan.startDate)}</strong> to <strong>{formatDateDisplay(weeklyPlan.endDate)}</strong>. You cannot log meals today.
                       </p>
                     </div>
                   </div>
