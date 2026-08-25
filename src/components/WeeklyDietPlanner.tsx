@@ -57,6 +57,8 @@ export const WeeklyDietPlanner: React.FC<WeeklyDietPlannerProps> = ({
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [activeDay, setActiveDay] = useState<keyof DietPlanState>('monday');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     const loadPlan = async () => {
@@ -64,6 +66,8 @@ export const WeeklyDietPlanner: React.FC<WeeklyDietPlannerProps> = ({
         const res = await fetchDietPlan(patientId);
         if (res.success && res.data) {
           const loadedData = res.data;
+          setStartDate(loadedData.startDate || '');
+          setEndDate(loadedData.endDate || '');
           const mergedPlan = initialPlanState();
           
           daysOfWeek.forEach((day) => {
@@ -125,6 +129,8 @@ export const WeeklyDietPlanner: React.FC<WeeklyDietPlannerProps> = ({
     try {
       await saveDietPlan({
         patientId,
+        startDate,
+        endDate,
         ...plan
       });
       onSuccess();
@@ -151,14 +157,38 @@ export const WeeklyDietPlanner: React.FC<WeeklyDietPlannerProps> = ({
 
           {/* Modal Body */}
           <div className="modal-body p-4 bg-light">
-            {/* Patient Header Summary */}
-            <div className="card border-0 shadow-sm p-3 mb-4 bg-white rounded-3 d-flex flex-row align-items-center justify-content-between">
-              <div className="text-start">
-                <span className="text-muted small fw-bold text-uppercase tracking-wider">Configuring Diet For</span>
-                <h3 className="fw-bold text-dark m-0">{patientName}</h3>
-              </div>
-              <div className="text-end text-muted small d-none d-md-block">
-                <i className="fa fa-info-circle me-1"></i> Changes will sync instantly to the patient's portal.
+            {/* Patient Header Summary with Date inputs */}
+            <div className="card border-0 shadow-sm p-4 mb-4 bg-white rounded-3">
+              <div className="row align-items-center g-3">
+                <div className="col-md-4 text-start">
+                  <span className="text-muted small fw-bold text-uppercase tracking-wider">Configuring Diet For</span>
+                  <h3 className="fw-bold text-dark m-0">{patientName}</h3>
+                </div>
+                <div className="col-md-8 text-start">
+                  <div className="d-flex flex-wrap align-items-center gap-3">
+                    <div>
+                      <label className="small fw-bold text-secondary mb-1">📅 Active From</label>
+                      <input 
+                        type="date" 
+                        className="form-control form-control-sm rounded-pill px-3" 
+                        value={startDate} 
+                        onChange={(e) => setStartDate(e.target.value)} 
+                      />
+                    </div>
+                    <div>
+                      <label className="small fw-bold text-secondary mb-1">📅 Active Until</label>
+                      <input 
+                        type="date" 
+                        className="form-control form-control-sm rounded-pill px-3" 
+                        value={endDate} 
+                        onChange={(e) => setEndDate(e.target.value)} 
+                      />
+                    </div>
+                    <div className="text-muted small ms-auto pt-4 d-none d-lg-block">
+                      <i className="fa fa-info-circle me-1"></i> Diet will auto-restrict to this range.
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

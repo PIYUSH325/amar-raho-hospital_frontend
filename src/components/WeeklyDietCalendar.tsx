@@ -145,8 +145,11 @@ export const WeeklyDietCalendar: React.FC = () => {
               { key: 'dinner', time: '08:30 PM', label: '🌙 Dinner', desc: dayPlan.dinner }
             ];
 
+            const todayStr = new Date().toISOString().split('T')[0];
+            const isWithinRange = (!weeklyPlan.startDate || todayStr >= weeklyPlan.startDate) && 
+                                  (!weeklyPlan.endDate || todayStr <= weeklyPlan.endDate);
+
             const handleLogAdherence = async (mealSlot: string, status: string) => {
-              const todayStr = new Date().toISOString().split('T')[0];
               try {
                 await saveComplianceLog(todayStr, mealSlot, status);
                 loadDietData();
@@ -157,6 +160,19 @@ export const WeeklyDietCalendar: React.FC = () => {
 
             return (
               <div className="text-start">
+                {/* Range Banner warning */}
+                {!isWithinRange && (
+                  <div className="alert alert-warning border-0 shadow-sm rounded-3 py-3 px-4 mb-4 d-flex align-items-center gap-3">
+                    <span className="fs-4">⚠️</span>
+                    <div>
+                      <h6 className="fw-bold m-0 text-warning-emphasis">Diet Plan Inactive Today</h6>
+                      <p className="small m-0 text-muted">
+                        This schedule is active from <strong>{weeklyPlan.startDate || 'Any'}</strong> to <strong>{weeklyPlan.endDate || 'Any'}</strong>. You cannot log meals today.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Day Selector Pills */}
                 <div className="d-flex flex-wrap gap-2 mb-4 border-bottom pb-3">
                   {dayNames.map((dName) => {
@@ -178,7 +194,7 @@ export const WeeklyDietCalendar: React.FC = () => {
                 </div>
 
                 <h6 className="fw-bold text-success mb-4 text-capitalize d-flex align-items-center">
-                  <i className="fa fa-clock me-2"></i> Hour-wise Plan for {selectedDietDay} {isRealToday ? "(Today - Loggable)" : "(Preview Only)"}:
+                  <i className="fa fa-clock me-2"></i> Hour-wise Plan for {selectedDietDay} {isRealToday ? (isWithinRange ? "(Today - Loggable)" : "(Today - Out of range)") : "(Preview Only)"}:
                 </h6>
 
                 {/* Vertical Timeline */}
@@ -208,7 +224,7 @@ export const WeeklyDietCalendar: React.FC = () => {
                             
                             {slot.desc && (
                               <div className="d-flex align-items-center gap-2">
-                                {isRealToday ? (
+                                {isRealToday && isWithinRange ? (
                                   <>
                                     <button
                                       type="button"
@@ -338,6 +354,10 @@ export const WeeklyDietCalendar: React.FC = () => {
                       { key: 'dinner', label: '🌙', name: dayPlan.dinner }
                     ];
 
+                    // Check if cell date falls inside range:
+                    const isCellWithinRange = (!weeklyPlan.startDate || dateStr >= weeklyPlan.startDate) && 
+                                              (!weeklyPlan.endDate || dateStr <= weeklyPlan.endDate);
+
                     return (
                       <div 
                         key={dNum} 
@@ -347,7 +367,7 @@ export const WeeklyDietCalendar: React.FC = () => {
                       >
                         <span className="fw-bold text-muted small mb-2">{dNum}</span>
                         <div className="overflow-hidden w-100">
-                          {mealsList.map((m) => {
+                          {isCellWithinRange && mealsList.map((m) => {
                             if (!m.name) return null;
 
                             const status = dayLog?.meals?.[m.key] || 'Pending';
