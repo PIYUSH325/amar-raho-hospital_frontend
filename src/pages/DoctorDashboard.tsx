@@ -48,6 +48,7 @@ export const DoctorDashboard: React.FC = () => {
   // Loading & notification states
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ type: 'success' | 'danger'; text: string } | null>(null);
+  const [isPresenceActive, setIsPresenceActive] = useState(true);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [patientTodoChecklist, setPatientTodoChecklist] = useState<DietPlanTask[]>([]);
@@ -166,6 +167,7 @@ export const DoctorDashboard: React.FC = () => {
         const docRes = await axios.get(`${API_BASE_URL}/doctors/me`, { headers });
         setDoctorProfile(docRes.data.data);
         const profile = docRes.data.data;
+        setIsPresenceActive(profile.isPresenceActive !== false);
         setProfileForm({
           specialization: profile.specialization || '',
           experience: String(profile.experience || ''),
@@ -206,6 +208,25 @@ export const DoctorDashboard: React.FC = () => {
       console.error('Failed to load portal databases');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTogglePresence = async (checked: boolean) => {
+    try {
+      const token = localStorage.getItem('hospital_token');
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await axios.put(
+        `${API_BASE_URL}/doctors/presence`,
+        { isPresenceActive: checked },
+        { headers }
+      );
+      if (res.data.success) {
+        setIsPresenceActive(checked);
+        triggerToast('success', `Presence status updated to ${checked ? 'Active' : 'Away'}`);
+      }
+    } catch (err: any) {
+      console.error('Failed to toggle presence status:', err.message);
+      triggerToast('danger', 'Failed to toggle presence status.');
     }
   };
 
@@ -733,6 +754,28 @@ export const DoctorDashboard: React.FC = () => {
               />
             </div>
             <div className="d-flex align-items-center gap-3">
+              {/* Presence Toggle Switch */}
+              <div className="d-flex align-items-center gap-2 border px-3 py-1 rounded-pill bg-light shadow-sm me-2">
+                <span className="fw-semibold text-secondary small">Presence:</span>
+                <div className="form-check form-switch m-0 d-flex align-items-center">
+                  <input 
+                    className="form-check-input" 
+                    type="checkbox" 
+                    role="switch"
+                    checked={isPresenceActive}
+                    onChange={(e) => handleTogglePresence(e.target.checked)}
+                    id="presenceToggle"
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <label 
+                    className="form-check-label fw-bold small ms-2"
+                    htmlFor="presenceToggle"
+                    style={{ cursor: 'pointer', color: isPresenceActive ? '#198754' : '#dc3545' }}
+                  >
+                    {isPresenceActive ? 'Active' : 'Away'}
+                  </label>
+                </div>
+              </div>
               <button className="btn btn-light rounded-circle p-2 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
                 <i className="fa fa-envelope text-muted"></i>
               </button>
