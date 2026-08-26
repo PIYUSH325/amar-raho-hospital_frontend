@@ -631,7 +631,7 @@ export const DoctorDashboard: React.FC = () => {
             {/* Doctor Profile Card */}
             <div className="text-center mb-5 mt-2">
               <div 
-                className="d-flex align-items-center justify-content-center rounded-circle bg-primary text-white mx-auto mb-3 shadow" 
+                className="d-flex align-items-center justify-content-center rounded-circle bg-primary text-white mx-auto mb-3 shadow position-relative" 
                 style={{ 
                   width: isSidebarCollapsed ? '48px' : '80px', 
                   height: isSidebarCollapsed ? '48px' : '80px', 
@@ -642,15 +642,54 @@ export const DoctorDashboard: React.FC = () => {
                 <h3 className={`m-0 text-white fw-bold ${isSidebarCollapsed ? 'fs-5' : ''}`}>
                   {user?.name ? user.name.slice(0,2).toUpperCase() : 'DR'}
                 </h3>
+                {/* Visual Status Dot */}
+                <span 
+                  className="position-absolute bottom-0 end-0 rounded-circle border border-2 border-white animate__animated animate__pulse animate__infinite"
+                  style={{ 
+                    width: '16px', 
+                    height: '16px', 
+                    backgroundColor: isPresenceActive ? '#198754' : '#dc3545',
+                    transform: 'translate(2px, 2px)',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  }}
+                  title={isPresenceActive ? "Presence: Active" : "Presence: Away"}
+                ></span>
               </div>
               
               {!isSidebarCollapsed && (
                 <div className="animate__animated animate__fadeIn">
                   <h5 className="mb-1 fw-bold text-dark text-truncate text-center w-100">Dr. {user?.name}</h5>
                   <p className="text-muted small mb-0 text-truncate text-center w-100">{doctorProfile?.specialization || 'Neurologist'}</p>
-                  <span className="text-muted text-uppercase" style={{ fontSize: '9px', letterSpacing: '1px', fontWeight: 'bold' }}>
-                    MBBS, DNB - {doctorProfile?.department || 'Neurology'}
-                  </span>
+                  <div className="mb-2">
+                    <span className="text-muted text-uppercase" style={{ fontSize: '9px', letterSpacing: '1px', fontWeight: 'bold' }}>
+                      MBBS, DNB - {doctorProfile?.department || 'Neurology'}
+                    </span>
+                  </div>
+
+                  {/* Presence Toggle switch box in sidebar */}
+                  <div className="px-3 mt-3">
+                    <div className="d-flex align-items-center justify-content-center gap-2 border px-3 py-2 rounded-pill bg-white shadow-sm">
+                      <span className="fw-semibold text-secondary small" style={{ fontSize: '11px' }}>Presence:</span>
+                      <div className="form-check form-switch m-0 d-flex align-items-center">
+                        <input 
+                          className="form-check-input" 
+                          type="checkbox" 
+                          role="switch"
+                          checked={isPresenceActive}
+                          onChange={(e) => handleTogglePresence(e.target.checked)}
+                          id="presenceToggleSidebar"
+                          style={{ cursor: 'pointer' }}
+                        />
+                        <label 
+                          className="form-check-label fw-bold small ms-2"
+                          htmlFor="presenceToggleSidebar"
+                          style={{ cursor: 'pointer', color: isPresenceActive ? '#198754' : '#dc3545', fontSize: '11px' }}
+                        >
+                          {isPresenceActive ? 'Active' : 'Away'}
+                        </label>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -754,28 +793,6 @@ export const DoctorDashboard: React.FC = () => {
               />
             </div>
             <div className="d-flex align-items-center gap-3">
-              {/* Presence Toggle Switch */}
-              <div className="d-flex align-items-center gap-2 border px-3 py-1 rounded-pill bg-light shadow-sm me-2">
-                <span className="fw-semibold text-secondary small">Presence:</span>
-                <div className="form-check form-switch m-0 d-flex align-items-center">
-                  <input 
-                    className="form-check-input" 
-                    type="checkbox" 
-                    role="switch"
-                    checked={isPresenceActive}
-                    onChange={(e) => handleTogglePresence(e.target.checked)}
-                    id="presenceToggle"
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <label 
-                    className="form-check-label fw-bold small ms-2"
-                    htmlFor="presenceToggle"
-                    style={{ cursor: 'pointer', color: isPresenceActive ? '#198754' : '#dc3545' }}
-                  >
-                    {isPresenceActive ? 'Active' : 'Away'}
-                  </label>
-                </div>
-              </div>
               <button className="btn btn-light rounded-circle p-2 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
                 <i className="fa fa-envelope text-muted"></i>
               </button>
