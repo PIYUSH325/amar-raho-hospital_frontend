@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import { Appointment, DoctorProfile, PatientProfile, MedicalRecord, Prescription, DietPlanTask } from '../types';
 import DietPlanBuilder from '../components/DietPlanBuilder';
 import WeeklyDietPlanner from '../components/WeeklyDietPlanner';
@@ -19,6 +20,7 @@ interface PatientListItem {
 
 export const DoctorDashboard: React.FC = () => {
   const { user, logout } = useAuth();
+  const { socket } = useSocket();
  
   const [activeTab, setActiveTab] = useState<'today' | 'appointments' | 'history' | 'profile' | 'nutrition' | 'fitness' | 'general' | 'chats'>('today');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
@@ -51,6 +53,14 @@ export const DoctorDashboard: React.FC = () => {
   const [isPresenceActive, setIsPresenceActive] = useState(true);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showChatNotifications, setShowChatNotifications] = useState(false);
+  const [unreadChatNotifications, setUnreadChatNotifications] = useState<Array<{
+    senderId: string;
+    senderName: string;
+    text: string;
+    createdAt: Date;
+  }>>([]);
+  const [unreadChats, setUnreadChats] = useState<string[]>([]);
   const [patientTodoChecklist, setPatientTodoChecklist] = useState<DietPlanTask[]>([]);
   const [selectedPlanPatientId, setSelectedPlanPatientId] = useState<string>('');
 
@@ -233,6 +243,42 @@ export const DoctorDashboard: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (!socket || !user?.id) return;
+
+    // Register user ID in the private notification room on the server
+    socket.emit('register', { userId: user.id });
+
+    // Listen for incoming notifications
+    socket.on('receive_message_notification', ({ msg, senderName }) => {
+      // If user is actively viewing the chat room with this sender, skip notifications
+      const activeRoom = sessionStorage.getItem('active_chat_room');
+      const msgRoom = `chat_${msg.patient}_${msg.doctor}`;
+      if (activeRoom === msgRoom) {
+        return;
+      }
+
+      setUnreadChats((prev) => prev.includes(msg.sender) ? prev : [...prev, msg.sender]);
+
+      // Add to dropdown notification list
+      setUnreadChatNotifications((prev) => [
+        {
+          senderId: msg.sender,
+          senderName: senderName || 'Someone',
+          text: msg.text,
+          createdAt: new Date()
+        },
+        ...prev
+      ]);
+
+      triggerToast('success', `💬 New message from ${senderName}: "${msg.text}"`);
+    });
+
+    return () => {
+      socket.off('receive_message_notification');
+    };
+  }, [socket, user?.id]);
 
   // Fetch full clinical history details for a single selected patient
   const selectPatientHistory = async (pat: PatientListItem) => {
@@ -755,10 +801,27 @@ export const DoctorDashboard: React.FC = () => {
               <button 
                 type="button"
                 className={`premium-nav-link border-0 text-start py-3 px-4 d-flex align-items-center ${activeTab === 'chats' ? 'active-link' : 'bg-transparent'}`}
-                onClick={() => { setActiveTab('chats'); setLiveChatPartnerId(''); }}
+                onClick={() => { setActiveTab('chats'); setLiveChatPartnerId(''); setUnreadChats([]); }}
               >
-                <i className="fa fa-comments fs-5 me-3"></i> 
-                {!isSidebarCollapsed && <span>Patient Chats</span>}
+                <div className="position-relative d-flex align-items-center w-100">
+                  <i className="fa fa-comments fs-5 me-3"></i> 
+                  
+                  {/* Collapsed dot badge */}
+                  {isSidebarCollapsed && unreadChats.length > 0 && (
+                    <span className="position-absolute top-0 start-0 translate-middle p-1 bg-danger border border-light rounded-circle" style={{ marginTop: '-2px', marginLeft: '12px' }}></span>
+                  )}
+                  
+                  {!isSidebarCollapsed && (
+                    <div className="d-flex justify-content-between align-items-center w-100">
+                      <span>Patient Chats</span>
+                      {unreadChats.length > 0 && (
+                        <span className="badge bg-danger rounded-pill px-2 py-0.5 ms-2 small">
+                          {unreadChats.length}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </button>
             </div>
           </div>
@@ -793,9 +856,72 @@ export const DoctorDashboard: React.FC = () => {
               />
             </div>
             <div className="d-flex align-items-center gap-3">
-              <button className="btn btn-light rounded-circle p-2 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
-                <i className="fa fa-envelope text-muted"></i>
-              </button>
+              {/* Envelope Dropdown for Unread Chats */}
+              <div className="position-relative">
+                <button 
+                  type="button"
+                  className="btn btn-light rounded-circle p-2 d-flex align-items-center justify-content-center position-relative" 
+                  style={{ width: '40px', height: '40px' }}
+                  onClick={() => {
+                    setShowChatNotifications(!showChatNotifications);
+                    setShowNotifications(false); // Close bell alerts
+                  }}
+                >
+                  <i className="fa fa-envelope text-muted"></i>
+                  {unreadChatNotifications.length > 0 && (
+                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '9px', marginTop: '8px', marginLeft: '-8px' }}>
+                      {unreadChatNotifications.length}
+                    </span>
+                  )}
+                </button>
+
+                {showChatNotifications && (
+                  <div 
+                    className="position-absolute end-0 mt-2 bg-white border shadow-lg rounded-4 p-3 animate__animated animate__fadeIn"
+                    style={{ zIndex: 1050, width: '320px', maxHeight: '400px', overflowY: 'auto' }}
+                  >
+                    <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                      <h6 className="fw-bold text-dark m-0 small"><i className="fa fa-envelope text-primary me-2"></i>Unread Messages</h6>
+                      <button 
+                        type="button" 
+                        className="btn btn-link text-muted p-0 small text-decoration-none"
+                        style={{ fontSize: '11px' }}
+                        onClick={() => setUnreadChatNotifications([])}
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                    {unreadChatNotifications.length === 0 ? (
+                      <p className="text-muted small text-center my-3">No new chat messages.</p>
+                    ) : (
+                      <div className="d-flex flex-column gap-2 text-start">
+                        {unreadChatNotifications.map((notif, idx) => (
+                          <div 
+                            key={idx} 
+                            className="p-2 bg-light border-start border-3 border-success rounded small text-dark cursor-pointer transition-all"
+                            onClick={() => {
+                              setActiveTab('chats');
+                              setLiveChatPartnerId(notif.senderId);
+                              setShowChatNotifications(false);
+                              // Remove this patient's message from unread list
+                              setUnreadChatNotifications(prev => prev.filter(n => n.senderId !== notif.senderId));
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <div className="d-flex justify-content-between mb-1" style={{ fontSize: '10px' }}>
+                              <span className="fw-bold text-success-emphasis">{notif.senderName}</span>
+                              <span className="text-muted">
+                                {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '11px', lineHeight: '1.3' }} className="text-truncate">{notif.text}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="position-relative">
                 <button 
                   type="button"

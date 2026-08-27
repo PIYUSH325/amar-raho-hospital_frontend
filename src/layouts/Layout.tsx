@@ -71,6 +71,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <Footer />
       <BackToTop />
 
+
       {notification && (
         <div 
           className="position-fixed p-3 bg-white rounded-3 shadow border text-start animate__animated animate__fadeInUp"
@@ -80,7 +81,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             right: '25px', 
             zIndex: 9999, 
             width: '320px', 
-            borderLeft: '5px solid #191e87',
+            borderLeft: '5px solid #198754',
             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
             cursor: 'pointer',
             transition: 'transform 0.2s ease'
