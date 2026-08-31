@@ -21,8 +21,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   useEffect(() => {
     if (!socket || !user?.id) return;
 
-    // Register user ID in the private notification room on the server
-    socket.emit('register', { userId: user.id });
+    const registerUser = () => {
+      socket.emit('register', { userId: user.id });
+    };
+
+    // Register immediately if already connected
+    if (socket.connected) {
+      registerUser();
+    }
+    
+    // Bind to connect event for future reconnections
+    socket.on('connect', registerUser);
 
     // Listen for incoming notifications
     socket.on('receive_message_notification', (data) => {
@@ -46,6 +55,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     });
 
     return () => {
+      socket.off('connect', registerUser);
       socket.off('receive_message_notification');
     };
   }, [socket, user?.id]);

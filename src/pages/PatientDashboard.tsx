@@ -128,8 +128,17 @@ export const PatientDashboard: React.FC = () => {
   useEffect(() => {
     if (!socket || !user?.id) return;
 
-    // Register user ID in the private notification room on the server
-    socket.emit('register', { userId: user.id });
+    const registerUser = () => {
+      socket.emit('register', { userId: user.id });
+    };
+
+    // Register immediately if already connected
+    if (socket.connected) {
+      registerUser();
+    }
+
+    // Bind to connect event for future reconnections
+    socket.on('connect', registerUser);
 
     // Listen for incoming notifications
     socket.on('receive_message_notification', ({ msg, senderName }) => {
@@ -158,6 +167,7 @@ export const PatientDashboard: React.FC = () => {
     });
 
     return () => {
+      socket.off('connect', registerUser);
       socket.off('receive_message_notification');
     };
   }, [socket, user?.id]);
