@@ -2057,17 +2057,34 @@ export const DoctorDashboard: React.FC = () => {
                         <div className="card border rounded-4 p-3 shadow-sm bg-light">
                           <h6 className="fw-bold mb-3 text-muted">Select a Patient</h6>
                           <div className="list-group">
-                            {patients.map((pat) => (
-                              <button
-                                key={pat._id}
-                                type="button"
-                                className={`list-group-item list-group-item-action border-0 rounded-3 mb-2 py-3 shadow-sm ${liveChatPartnerId === pat._id ? 'active bg-primary text-white' : ''}`}
-                                onClick={() => setLiveChatPartnerId(pat._id)}
-                              >
-                                <div className="fw-bold small">{pat.name}</div>
-                                <span className="text-muted d-block small" style={{ fontSize: '10px' }}>{pat.email}</span>
-                              </button>
-                            ))}
+                            {patients.map((pat) => {
+                              const unreadCount = unreadChatNotifications.filter(n => n.senderId === pat._id).length;
+                              const isActive = liveChatPartnerId === pat._id;
+                              
+                              return (
+                                <button
+                                  key={pat._id}
+                                  type="button"
+                                  className={`list-group-item list-group-item-action border-0 rounded-3 mb-2 py-3 shadow-sm d-flex justify-content-between align-items-center ${isActive ? 'active bg-primary text-white' : ''}`}
+                                  onClick={() => {
+                                    setLiveChatPartnerId(pat._id);
+                                    // Clear unread counts for this patient when selected
+                                    setUnreadChatNotifications(prev => prev.filter(n => n.senderId !== pat._id));
+                                    setUnreadChats(prev => prev.filter(id => id !== pat._id));
+                                  }}
+                                >
+                                  <div className="text-start">
+                                    <div className="fw-bold small">{pat.name}</div>
+                                    <span className={`d-block small ${isActive ? 'text-white-50' : 'text-muted'}`} style={{ fontSize: '10px' }}>{pat.email}</span>
+                                  </div>
+                                  {unreadCount > 0 && !isActive && (
+                                    <span className="badge bg-danger rounded-pill px-2 py-1 small ms-2 animate__animated animate__bounceIn">
+                                      {unreadCount}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                       </div>

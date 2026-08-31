@@ -1042,15 +1042,30 @@ export const PatientDashboard: React.FC = () => {
                               {Array.from(new Set(appointments.map(a => a.doctorRef))).map((docId) => {
                                 const appointment = appointments.find(a => a.doctorRef === docId);
                                 if (!docId || !appointment) return null;
+                                const unreadCount = unreadChatNotifications.filter(n => n.senderId === docId).length;
+                                const isActive = chatPartnerId === docId;
+                                
                                 return (
                                   <button
                                     key={docId}
                                     type="button"
-                                    className={`list-group-item list-group-item-action border-0 rounded-3 mb-2 py-3 shadow-sm ${chatPartnerId === docId ? 'active bg-primary text-white' : ''}`}
-                                    onClick={() => setChatPartnerId(docId)}
+                                    className={`list-group-item list-group-item-action border-0 rounded-3 mb-2 py-3 shadow-sm d-flex justify-content-between align-items-center ${isActive ? 'active bg-primary text-white' : ''}`}
+                                    onClick={() => {
+                                      setChatPartnerId(docId);
+                                      // Clear unread counts for this doctor when selected
+                                      setUnreadChatNotifications(prev => prev.filter(n => n.senderId !== docId));
+                                      setUnreadChats(prev => prev.filter(id => id !== docId));
+                                    }}
                                   >
-                                    <div className="fw-bold small">{appointment.doctor}</div>
-                                    <span className="text-muted d-block small" style={{ fontSize: '10px' }}>Consulting Physician</span>
+                                    <div className="text-start">
+                                      <div className="fw-bold small">{appointment.doctor}</div>
+                                      <span className={`d-block small ${isActive ? 'text-white-50' : 'text-muted'}`} style={{ fontSize: '10px' }}>Consulting Physician</span>
+                                    </div>
+                                    {unreadCount > 0 && !isActive && (
+                                      <span className="badge bg-danger rounded-pill px-2 py-1 small ms-2 animate__animated animate__bounceIn">
+                                        {unreadCount}
+                                      </span>
+                                    )}
                                   </button>
                                 );
                               })}
