@@ -137,3 +137,18 @@ export interface DitePlan {
   createdBy?: string;
   doctorName?: string;
 }
+
+export interface ChatMessage {
+  _id?: string;
+  sender: string;
+  recipient: string;
+  patient: string;
+  doctor: string;
+  text?: string;
+  messageType?: 'text' | 'image' | 'document' | 'audio' | 'video';
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileSize?: string | null;
+  duration?: number | null;
+  createdAt?: string;
+}

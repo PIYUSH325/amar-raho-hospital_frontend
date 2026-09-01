@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
+import { ChatMessage } from '../types';
 
 interface LiveChatBoxProps {
   chatPartnerId: string;
@@ -16,10 +17,29 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
 }) => {
   const { socket } = useSocket();
   const { user } = useAuth();
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageText, setMessageText] = useState('');
   const [isPartnerTyping, setIsPartnerTyping] = useState(false);
   const [partnerNameTyping, setPartnerNameTyping] = useState('');
+
+  // Attachment & Media states
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [uploadProgressText, setUploadProgressText] = useState('');
+  const [previewImageModal, setPreviewImageModal] = useState<string | null>(null);
+
+  // Audio / Voice Recording states
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<any>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+
+  // Refs for hidden file inputs
+  const documentInputRef = useRef<HTMLInputElement>(null);
+  const photoVideoInputRef = useRef<HTMLInputElement>(null);
+  const audioFileInputRef = useRef<HTMLInputElement>(null);
 
   // Call-related States
   const [callActive, setCallActive] = useState(false);
@@ -380,6 +400,179 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
     }, 1500);
   };
 
+  const formatSeconds = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  // Start Voice Recording
+  const startVoiceRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordingStreamRef.current = stream;
+      audioChunksRef.current = [];
+
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.start(200);
+      setIsRecordingAudio(true);
+      setRecordingSeconds(0);
+
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+    } catch (err: any) {
+      console.error("Microphone access error:", err);
+      alert("Unable to access microphone. Please enable microphone permissions in your browser.");
+    }
+  };
+
+  // Cancel / Discard Voice Recording
+  const cancelVoiceRecording = () => {
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    if (recordingStreamRef.current) {
+      recordingStreamRef.current.getTracks().forEach(t => t.stop());
+      recordingStreamRef.current = null;
+    }
+    audioChunksRef.current = [];
+    setIsRecordingAudio(false);
+    setRecordingSeconds(0);
+  };
+
+  // Stop & Send Voice Recording
+  const sendVoiceRecording = async () => {
+    if (!mediaRecorderRef.current || !socket || !user?.id || !chatPartnerId) return;
+
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    const duration = recordingSeconds;
+
+    mediaRecorderRef.current.onstop = async () => {
+      if (recordingStreamRef.current) {
+        recordingStreamRef.current.getTracks().forEach(t => t.stop());
+        recordingStreamRef.current = null;
+      }
+
+      if (audioChunksRef.current.length === 0) {
+        setIsRecordingAudio(false);
+        return;
+      }
+
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      audioChunksRef.current = [];
+      setIsRecordingAudio(false);
+      setRecordingSeconds(0);
+
+      try {
+        setIsUploadingMedia(true);
+        setUploadProgressText('Uploading voice note...');
+        const token = localStorage.getItem('hospital_token');
+        const formData = new FormData();
+        formData.append('file', audioBlob, `voice-note-${Date.now()}.webm`);
+
+        const res = await axios.post(`${API_BASE_URL}/chats/upload`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (res.data && res.data.success) {
+          const { fileUrl, fileName, fileSize } = res.data.data;
+          const roomId = getRoomId();
+          const patientId = currentUserRole === 'patient' ? user.id : chatPartnerId;
+          const doctorId = currentUserRole === 'doctor' ? user.id : chatPartnerId;
+
+          socket.emit('send_message', {
+            roomId,
+            senderId: user.id,
+            recipientId: chatPartnerId,
+            patientId,
+            doctorId,
+            text: '',
+            messageType: 'audio',
+            fileUrl,
+            fileName,
+            fileSize,
+            duration,
+            senderName: user.name
+          });
+        }
+      } catch (err: any) {
+        console.error("Failed to upload voice note:", err);
+        alert("Failed to send voice note. Please try again.");
+      } finally {
+        setIsUploadingMedia(false);
+        setUploadProgressText('');
+      }
+    };
+
+    mediaRecorderRef.current.stop();
+  };
+
+  // Handle generic file upload (documents, photos, videos, audio)
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, intendedType: 'document' | 'image' | 'audio' | 'video') => {
+    const file = e.target.files?.[0];
+    if (!file || !socket || !user?.id || !chatPartnerId) return;
+
+    e.target.value = '';
+    setShowAttachmentMenu(false);
+
+    try {
+      setIsUploadingMedia(true);
+      setUploadProgressText(`Uploading ${intendedType}...`);
+
+      const token = localStorage.getItem('hospital_token');
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await axios.post(`${API_BASE_URL}/chats/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (res.data && res.data.success) {
+        const { fileUrl, fileName, fileType, fileSize } = res.data.data;
+        const roomId = getRoomId();
+        const patientId = currentUserRole === 'patient' ? user.id : chatPartnerId;
+        const doctorId = currentUserRole === 'doctor' ? user.id : chatPartnerId;
+
+        socket.emit('send_message', {
+          roomId,
+          senderId: user.id,
+          recipientId: chatPartnerId,
+          patientId,
+          doctorId,
+          text: '',
+          messageType: fileType || intendedType,
+          fileUrl,
+          fileName,
+          fileSize,
+          senderName: user.name
+        });
+      }
+    } catch (err: any) {
+      console.error("File upload failed:", err);
+      alert("Failed to upload attachment. Please try again.");
+    } finally {
+      setIsUploadingMedia(false);
+      setUploadProgressText('');
+    }
+  };
+
   // Send message
   const handleSendMessage = () => {
     if (!socket || !messageText.trim() || !user?.id || !chatPartnerId) return;
@@ -402,6 +595,7 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
       patientId,
       doctorId,
       text: messageText.trim(),
+      messageType: 'text',
       senderName: user.name
     });
 
@@ -493,6 +687,90 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
 
       <div ref={chatBodyRef} className="card-body p-3 overflow-y-auto bg-light" style={{ height: '350px' , overflowY: 'scroll'}}>
         <div className="d-flex flex-column gap-2" style={{ minHeight: '100%' }}>
+        {/* Hidden File Inputs */}
+        <input 
+          type="file" 
+          ref={documentInputRef} 
+          style={{ display: 'none' }} 
+          accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.ppt,.pptx" 
+          onChange={(e) => handleFileUpload(e, 'document')} 
+        />
+        <input 
+          type="file" 
+          ref={photoVideoInputRef} 
+          style={{ display: 'none' }} 
+          accept="image/*,video/*" 
+          onChange={(e) => handleFileUpload(e, 'image')} 
+        />
+        <input 
+          type="file" 
+          ref={audioFileInputRef} 
+          style={{ display: 'none' }} 
+          accept="audio/*" 
+          onChange={(e) => handleFileUpload(e, 'audio')} 
+        />
+
+        {/* Uploading Media Indicator Banner */}
+        {isUploadingMedia && (
+          <div className="position-absolute top-0 start-0 w-100 bg-primary text-white py-2 px-3 d-flex align-items-center justify-content-center gap-2 shadow-sm animate__animated animate__fadeInDown" style={{ zIndex: 1100 }}>
+            <div className="spinner-border spinner-border-sm text-white" role="status"></div>
+            <span className="small fw-semibold">{uploadProgressText || 'Uploading attachment...'}</span>
+          </div>
+        )}
+
+        {/* Attachment Menu Popup (WhatsApp Style) */}
+        {showAttachmentMenu && (
+          <div 
+            className="position-absolute bg-dark text-white rounded-4 shadow-lg p-2 animate__animated animate__fadeInUp"
+            style={{
+              bottom: '75px',
+              left: '15px',
+              zIndex: 1050,
+              width: '210px',
+              background: '#1e293b',
+              border: '1px solid #334155'
+            }}
+          >
+            <div className="d-flex flex-column gap-1">
+              <button 
+                type="button" 
+                className="btn btn-dark text-start d-flex align-items-center gap-3 py-2 px-3 border-0 rounded-3 text-white" 
+                style={{ background: 'transparent' }}
+                onClick={() => { setShowAttachmentMenu(false); documentInputRef.current?.click(); }}
+              >
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px', background: '#6366f1' }}>
+                  <i className="fa fa-file-alt text-white small"></i>
+                </div>
+                <span className="small fw-semibold">Document</span>
+              </button>
+
+              <button 
+                type="button" 
+                className="btn btn-dark text-start d-flex align-items-center gap-3 py-2 px-3 border-0 rounded-3 text-white" 
+                style={{ background: 'transparent' }}
+                onClick={() => { setShowAttachmentMenu(false); photoVideoInputRef.current?.click(); }}
+              >
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px', background: '#0284c7' }}>
+                  <i className="fa fa-image text-white small"></i>
+                </div>
+                <span className="small fw-semibold">Photos & videos</span>
+              </button>
+
+              <button 
+                type="button" 
+                className="btn btn-dark text-start d-flex align-items-center gap-3 py-2 px-3 border-0 rounded-3 text-white" 
+                style={{ background: 'transparent' }}
+                onClick={() => { setShowAttachmentMenu(false); audioFileInputRef.current?.click(); }}
+              >
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px', background: '#ec4899' }}>
+                  <i className="fa fa-headphones text-white small"></i>
+                </div>
+                <span className="small fw-semibold">Audio</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {messages.length === 0 ? (
           <div className="text-center my-auto text-muted">
             <i className="fa fa-comments fa-2x mb-2 text-muted opacity-50"></i>
@@ -501,6 +779,10 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
         ) : (
           messages.map((msg, idx) => {
             const isMe = msg.sender === user?.id;
+            const rawFileUrl = msg.fileUrl 
+              ? (msg.fileUrl.startsWith('http') ? msg.fileUrl : `${API_BASE_URL.replace('/api', '')}${msg.fileUrl}`) 
+              : '';
+
             return (
               <div key={msg._id || idx} className={`d-flex flex-column ${isMe ? 'align-items-end' : 'align-items-start'}`}>
                 <div 
@@ -508,12 +790,78 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
                   style={{
                     background: isMe ? '#dbeafe' : '#ffffff',
                     borderRadius: isMe ? '15px 15px 0 15px' : '15px 15px 15px 0',
-                    maxWidth: '80%'
+                    maxWidth: '85%'
                   }}
                 >
-                  <p className="m-0 small text-start" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{msg.text}</p>
+                  {/* 📷 IMAGE MESSAGE */}
+                  {msg.messageType === 'image' && rawFileUrl && (
+                    <div className="mb-1">
+                      <img 
+                        src={rawFileUrl} 
+                        alt={msg.fileName || 'Photo'} 
+                        className="rounded-3 shadow-sm img-fluid"
+                        style={{ maxHeight: '200px', objectFit: 'cover', cursor: 'pointer', display: 'block' }}
+                        onClick={() => setPreviewImageModal(rawFileUrl)}
+                      />
+                    </div>
+                  )}
+
+                  {/* 🎥 VIDEO MESSAGE */}
+                  {msg.messageType === 'video' && rawFileUrl && (
+                    <div className="mb-1" style={{ maxWidth: '280px' }}>
+                      <video 
+                        src={rawFileUrl} 
+                        controls 
+                        className="rounded-3 shadow-sm w-100" 
+                        style={{ maxHeight: '220px' }}
+                      />
+                    </div>
+                  )}
+
+                  {/* 📄 DOCUMENT MESSAGE */}
+                  {msg.messageType === 'document' && rawFileUrl && (
+                    <a 
+                      href={rawFileUrl} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="text-decoration-none d-flex align-items-center gap-3 p-2 bg-white rounded-3 border mb-1 shadow-sm text-dark hover-bg-light"
+                      style={{ minWidth: '220px' }}
+                    >
+                      <div className="d-flex align-items-center justify-content-center bg-danger-subtle text-danger rounded p-2" style={{ width: '38px', height: '38px' }}>
+                        <i className={`fa ${msg.fileName?.toLowerCase().endsWith('.pdf') ? 'fa-file-pdf' : 'fa-file-alt'} fs-5`}></i>
+                      </div>
+                      <div className="flex-grow-1 text-truncate text-start">
+                        <div className="fw-bold small text-truncate" style={{ maxWidth: '140px' }}>{msg.fileName || 'Document'}</div>
+                        <span className="text-muted" style={{ fontSize: '10px' }}>{msg.fileSize || 'Document File'}</span>
+                      </div>
+                      <i className="fa fa-arrow-down text-muted small me-1"></i>
+                    </a>
+                  )}
+
+                  {/* 🎤 AUDIO / VOICE NOTE MESSAGE */}
+                  {msg.messageType === 'audio' && rawFileUrl && (
+                    <div className="d-flex flex-column gap-1 mb-1" style={{ minWidth: '240px' }}>
+                      <div className="d-flex align-items-center gap-2 text-start">
+                        <i className="fa fa-microphone text-primary"></i>
+                        <span className="small fw-semibold text-dark">
+                          {msg.duration ? `${formatSeconds(msg.duration)} Voice Note` : 'Voice Note'}
+                        </span>
+                      </div>
+                      <audio 
+                        src={rawFileUrl} 
+                        controls 
+                        className="w-100 mt-1" 
+                        style={{ height: '36px', outline: 'none' }}
+                      />
+                    </div>
+                  )}
+
+                  {/* 💬 TEXT CAPTION / TEXT MESSAGE */}
+                  {msg.text && (
+                    <p className="m-0 small text-start" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{msg.text}</p>
+                  )}
                 </div>
-                <span className="text-muted" style={{ fontSize: '8px', marginTop: '2px', paddingLeft: '4px' }}>
+                <span className="text-muted" style={{ fontSize: '8px', marginTop: '2px', paddingLeft: '4px', paddingRight: '4px' }}>
                   {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                 </span>
               </div>
@@ -539,24 +887,112 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
       </div>
 
       {/* Input Footer */}
-      <div className="card-footer bg-white border-top p-3 d-flex gap-2 align-items-center">
-        <input 
-          type="text" 
-          className="form-control rounded-pill px-4" 
-          placeholder="Type your message..." 
-          value={messageText}
-          onChange={handleInputChange}
-          onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-        />
-        <button 
-          type="button" 
-          className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center p-0" 
-          style={{ width: '40px', height: '40px' }}
-          onClick={handleSendMessage}
-        >
-          <i className="fa fa-paper-plane" style={{ fontSize: '14px' }}></i>
-        </button>
+      <div className="card-footer bg-white border-top p-3 position-relative">
+        {isRecordingAudio ? (
+          /* 🎙️ Voice Recording Active Bar */
+          <div className="d-flex align-items-center justify-content-between w-100 py-1 animate__animated animate__fadeIn">
+            <div className="d-flex align-items-center gap-3">
+              <div className="d-flex align-items-center gap-2">
+                <span className="spinner-grow spinner-grow-sm text-danger" style={{ width: '12px', height: '12px' }}></span>
+                <span className="fw-bold text-danger small">{formatSeconds(recordingSeconds)}</span>
+              </div>
+              <span className="text-muted small d-none d-sm-inline">Recording voice note...</span>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <button 
+                type="button" 
+                className="btn btn-outline-danger btn-sm rounded-circle d-flex align-items-center justify-content-center" 
+                style={{ width: '38px', height: '38px' }}
+                onClick={cancelVoiceRecording}
+                title="Discard Recording"
+              >
+                <i className="fa fa-trash"></i>
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-success btn-sm rounded-circle d-flex align-items-center justify-content-center" 
+                style={{ width: '38px', height: '38px' }}
+                onClick={sendVoiceRecording}
+                title="Send Voice Note"
+              >
+                <i className="fa fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* 💬 Standard Message Input Bar with Attachments and Mic Toggle */
+          <div className="d-flex gap-2 align-items-center w-100">
+            {/* Attachment Plus Button */}
+            <button 
+              type="button" 
+              className={`btn ${showAttachmentMenu ? 'btn-secondary' : 'btn-light'} rounded-circle d-flex align-items-center justify-content-center p-0 shadow-sm`} 
+              style={{ width: '40px', height: '40px', flexShrink: 0 }}
+              onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+              title="Add Attachment"
+            >
+              <i className={`fa ${showAttachmentMenu ? 'fa-times' : 'fa-plus'} text-muted`} style={{ fontSize: '14px' }}></i>
+            </button>
+
+            <input 
+              type="text" 
+              className="form-control rounded-pill px-4" 
+              placeholder="Type your message..." 
+              value={messageText}
+              onChange={handleInputChange}
+              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+            />
+
+            {messageText.trim() ? (
+              <button 
+                type="button" 
+                className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center p-0 shadow-sm" 
+                style={{ width: '40px', height: '40px', flexShrink: 0 }}
+                onClick={handleSendMessage}
+                title="Send Message"
+              >
+                <i className="fa fa-paper-plane" style={{ fontSize: '14px' }}></i>
+              </button>
+            ) : (
+              <button 
+                type="button" 
+                className="btn btn-light rounded-circle d-flex align-items-center justify-content-center p-0 shadow-sm text-primary" 
+                style={{ width: '40px', height: '40px', flexShrink: 0 }}
+                onClick={startVoiceRecording}
+                title="Record Voice Note"
+              >
+                <i className="fa fa-microphone fs-5"></i>
+              </button>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* 🔍 Image Lightbox Preview Modal */}
+      {previewImageModal && (
+        <div 
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3 animate__animated animate__fadeIn"
+          style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 99999 }}
+          onClick={() => setPreviewImageModal(null)}
+        >
+          <div className="position-relative text-center" style={{ maxWidth: '90vw', maxHeight: '90vh' }}>
+            <img 
+              src={previewImageModal} 
+              alt="Preview" 
+              className="img-fluid rounded-4 shadow-lg" 
+              style={{ maxHeight: '85vh', objectFit: 'contain' }}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button 
+              type="button" 
+              className="btn btn-light rounded-circle position-absolute top-0 end-0 m-3 shadow"
+              style={{ width: '40px', height: '40px' }}
+              onClick={() => setPreviewImageModal(null)}
+            >
+              <i className="fa fa-times"></i>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
