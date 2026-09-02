@@ -1,9 +1,36 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
-import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
+import EmojiPicker, { EmojiClickData, EmojiStyle } from 'emoji-picker-react';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { ChatMessage } from '../types';
+
+// Helper to render message text and convert Windows flag letters (e.g. IN, US) into full-color SVG flags
+const renderFormattedMessage = (text: string) => {
+  if (!text) return null;
+
+  // Regex matching flag emoji sequences (regional indicator symbol pairs: \uD83C[\uDDE6-\uDDFF]\uD83C[\uDDE6-\uDDFF])
+  const flagRegex = /(\uD83C[\uDDE6-\uDDFF]\uD83C[\uDDE6-\uDDFF])/g;
+  
+  const parts = text.split(flagRegex);
+  return parts.map((part, index) => {
+    if (flagRegex.test(part)) {
+      // Convert flag pair to hex code points (e.g. 1f1ee-1f1f3 for India 🇮🇳)
+      const codePoints = Array.from(part).map(c => c.codePointAt(0)?.toString(16)).filter(Boolean).join('-');
+      const svgUrl = `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/${codePoints}.svg`;
+      return (
+        <img 
+          key={index} 
+          src={svgUrl} 
+          alt={part} 
+          className="align-middle mx-1"
+          style={{ width: '1.4em', height: '1.4em', display: 'inline-block', verticalAlign: '-0.2em' }} 
+        />
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
+};
 
 interface LiveChatBoxProps {
   chatPartnerId: string;
@@ -864,7 +891,9 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
 
                   {/* 💬 TEXT CAPTION / TEXT MESSAGE */}
                   {msg.text && (
-                    <p className="m-0 small text-start" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{msg.text}</p>
+                    <p className="m-0 small text-start" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                      {renderFormattedMessage(msg.text)}
+                    </p>
                   )}
                 </div>
                 <span className="text-muted" style={{ fontSize: '8px', marginTop: '2px', paddingLeft: '4px', paddingRight: '4px' }}>
@@ -906,6 +935,7 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
           >
             <EmojiPicker 
               onEmojiClick={handleEmojiClick}
+              emojiStyle={EmojiStyle.GOOGLE}
               autoFocusSearch={false}
               width={320}
               height={380}
@@ -946,7 +976,7 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
             </div>
           </div>
         ) : (
-          /* 💬 Standard Message Input Bar with Attachments, Emoji and Mic Toggle */
+          /* 💬 Standard Message Input Bar with Attachments, Emoji inside input, and Mic Toggle */
           <div className="d-flex gap-2 align-items-center w-100">
             {/* Attachment Plus Button */}
             <button 
@@ -959,32 +989,35 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
               <i className={`fa ${showAttachmentMenu ? 'fa-times' : 'fa-plus'} text-muted`} style={{ fontSize: '14px' }}></i>
             </button>
 
-            {/* Emoji Button */}
-            <button 
-              type="button" 
-              className={`btn ${showEmojiPicker ? 'btn-primary text-white' : 'btn-light text-muted'} rounded-circle d-flex align-items-center justify-content-center p-0 shadow-sm`} 
-              style={{ width: '40px', height: '40px', flexShrink: 0 }}
-              onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowAttachmentMenu(false); }}
-              title="Choose Emoji"
-            >
-              <i className="fa fa-smile" style={{ fontSize: '17px' }}></i>
-            </button>
+            {/* Integrated Pill Input with Emoji Button inside on the left */}
+            <div className="input-group bg-white rounded-pill border px-3 py-1 shadow-sm flex-grow-1 align-items-center" style={{ minHeight: '42px' }}>
+              {/* Emoji Button Inside Input */}
+              <button 
+                type="button" 
+                className="btn p-0 border-0 bg-transparent text-muted me-2 d-flex align-items-center justify-content-center" 
+                style={{ cursor: 'pointer', outline: 'none' }}
+                onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowAttachmentMenu(false); }}
+                title="Choose Emoji"
+              >
+                <i className={`fa fa-smile fs-5 ${showEmojiPicker ? 'text-primary' : 'text-muted'}`}></i>
+              </button>
 
-            <input 
-              type="text" 
-              className="form-control rounded-pill px-4" 
-              placeholder="Type your message..." 
-              value={messageText}
-              onChange={handleInputChange}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  setShowEmojiPicker(false);
-                  setShowAttachmentMenu(false);
-                  handleSendMessage();
-                }
-              }}
-              onClick={() => { setShowEmojiPicker(false); setShowAttachmentMenu(false); }}
-            />
+              <input 
+                type="text" 
+                className="form-control border-0 p-0 shadow-none bg-transparent" 
+                placeholder="Type your message..." 
+                value={messageText}
+                onChange={handleInputChange}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setShowEmojiPicker(false);
+                    setShowAttachmentMenu(false);
+                    handleSendMessage();
+                  }
+                }}
+                onClick={() => { setShowEmojiPicker(false); setShowAttachmentMenu(false); }}
+              />
+            </div>
 
             {messageText.trim() ? (
               <button 
