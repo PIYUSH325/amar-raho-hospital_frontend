@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { ChatMessage } from '../types';
@@ -24,9 +25,14 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
 
   // Attachment & Media states
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [uploadProgressText, setUploadProgressText] = useState('');
   const [previewImageModal, setPreviewImageModal] = useState<string | null>(null);
+
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    setMessageText((prev) => prev + emojiData.emoji);
+  };
 
   // Audio / Voice Recording states
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
@@ -888,6 +894,26 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
 
       {/* Input Footer */}
       <div className="card-footer bg-white border-top p-3 position-relative">
+        {/* 😊 Emoji Picker Popover */}
+        {showEmojiPicker && (
+          <div 
+            className="position-absolute shadow-lg rounded-4 overflow-hidden animate__animated animate__fadeInUp"
+            style={{
+              bottom: '75px',
+              left: '15px',
+              zIndex: 1060
+            }}
+          >
+            <EmojiPicker 
+              onEmojiClick={handleEmojiClick}
+              autoFocusSearch={false}
+              width={320}
+              height={380}
+              searchPlaceHolder="Search emojis & flags..."
+            />
+          </div>
+        )}
+
         {isRecordingAudio ? (
           /* 🎙️ Voice Recording Active Bar */
           <div className="d-flex align-items-center justify-content-between w-100 py-1 animate__animated animate__fadeIn">
@@ -920,17 +946,28 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
             </div>
           </div>
         ) : (
-          /* 💬 Standard Message Input Bar with Attachments and Mic Toggle */
+          /* 💬 Standard Message Input Bar with Attachments, Emoji and Mic Toggle */
           <div className="d-flex gap-2 align-items-center w-100">
             {/* Attachment Plus Button */}
             <button 
               type="button" 
               className={`btn ${showAttachmentMenu ? 'btn-secondary' : 'btn-light'} rounded-circle d-flex align-items-center justify-content-center p-0 shadow-sm`} 
               style={{ width: '40px', height: '40px', flexShrink: 0 }}
-              onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+              onClick={() => { setShowAttachmentMenu(!showAttachmentMenu); setShowEmojiPicker(false); }}
               title="Add Attachment"
             >
               <i className={`fa ${showAttachmentMenu ? 'fa-times' : 'fa-plus'} text-muted`} style={{ fontSize: '14px' }}></i>
+            </button>
+
+            {/* Emoji Button */}
+            <button 
+              type="button" 
+              className={`btn ${showEmojiPicker ? 'btn-primary text-white' : 'btn-light text-muted'} rounded-circle d-flex align-items-center justify-content-center p-0 shadow-sm`} 
+              style={{ width: '40px', height: '40px', flexShrink: 0 }}
+              onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowAttachmentMenu(false); }}
+              title="Choose Emoji"
+            >
+              <i className="fa fa-smile" style={{ fontSize: '17px' }}></i>
             </button>
 
             <input 
@@ -939,7 +976,14 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
               placeholder="Type your message..." 
               value={messageText}
               onChange={handleInputChange}
-              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setShowEmojiPicker(false);
+                  setShowAttachmentMenu(false);
+                  handleSendMessage();
+                }
+              }}
+              onClick={() => { setShowEmojiPicker(false); setShowAttachmentMenu(false); }}
             />
 
             {messageText.trim() ? (
@@ -947,7 +991,11 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
                 type="button" 
                 className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center p-0 shadow-sm" 
                 style={{ width: '40px', height: '40px', flexShrink: 0 }}
-                onClick={handleSendMessage}
+                onClick={() => {
+                  setShowEmojiPicker(false);
+                  setShowAttachmentMenu(false);
+                  handleSendMessage();
+                }}
                 title="Send Message"
               >
                 <i className="fa fa-paper-plane" style={{ fontSize: '14px' }}></i>
