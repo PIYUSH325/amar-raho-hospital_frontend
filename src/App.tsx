@@ -10,6 +10,7 @@ import Testimonial from './pages/Testimonial';
 import Appointment from './pages/Appointment';
 import Contact from './pages/Contact';
 import NotFound from './pages/NotFound';
+import Policies from './pages/Policies';
 import AdminDashboard from './pages/AdminDashboard';
 import PatientDashboard from './pages/PatientDashboard';
 import DoctorDashboard from './pages/DoctorDashboard';
@@ -39,6 +40,7 @@ export const App: React.FC = () => {
             <Route path="/services" element={<Services />} />
             <Route path="/features" element={<Features />} />
             <Route path="/team" element={<Team />} />
+            <Route path="/policies" element={<Policies />} />
             <Route path="/testimonial" element={<Testimonial />} />
             <Route 
               path="/appointment" 

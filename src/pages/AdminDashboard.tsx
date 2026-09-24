@@ -31,9 +31,34 @@ interface DoctorListItem {
   };
 }
 
+interface PolicyListItem {
+  _id: string;
+  title: string;
+  category: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  totalChunks: number;
+  createdAt: string;
+}
+
+interface AiSettingsData {
+  _id?: string;
+  hospitalName: string;
+  address: string;
+  emergencyPhone: string;
+  supportEmail: string;
+  operatingHours: string;
+  botPersonality: string;
+  welcomeGreeting: string;
+  outOfScopeRules: string;
+  customInstructions: string;
+  updatedAt?: string;
+}
+
 export const AdminDashboard: React.FC = () => {
   const { logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'doctors' | 'patients' | 'hospitals' | 'departments'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'doctors' | 'patients' | 'hospitals' | 'departments' | 'policies' | 'ai-settings'>('analytics');
   
   // Databases lists
   const [stats, setStats] = useState<any>(null);
@@ -42,7 +67,22 @@ export const AdminDashboard: React.FC = () => {
   const [patients, setPatients] = useState<PatientListItem[]>([]);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [policies, setPolicies] = useState<PolicyListItem[]>([]);
   
+  // AI Assistant Settings State
+  const [aiSettings, setAiSettings] = useState<AiSettingsData>({
+    hospitalName: 'Amar Raho Hospital',
+    address: 'Plot 404, Yamaraj Bypass Road, Near Swarg Lok U-Turn, Narak-Pur',
+    emergencyPhone: '+91 98765-AMAR-1',
+    supportEmail: 'support@amarraho.com',
+    operatingHours: 'Monday to Friday, 09:00 AM to 12:00 PM',
+    botPersonality: 'polite, empathetic, concise, and professional',
+    welcomeGreeting: 'Welcome to Amar Raho Hospital! I am your AI Support & Navigational Guide. How can I help you today? You can ask me about our doctors, specializations, departments, timings, or online appointment booking!',
+    outOfScopeRules: `You MUST STRICTLY REFUSE to answer questions unrelated to health, medicine, doctors, appointments, hospital policies, or hospital services.\nThis includes:\n- Computer programming, software development, web design, networking, APIs, or databases.\n- General trivia, pop culture, movies, music, sports, or gaming.\n- Mathematics, homework, finance, cryptocurrency, or politics.\nMandatory Refusal response:\n"I am the dedicated AI Assistant for Amar Raho Hospital. I specialize exclusively in healthcare, our clinical departments, doctor appointments, and hospital services. I cannot assist with technical or non-medical topics. Please let me know how I can assist with your health or hospital visits!"`,
+    customInstructions: '',
+  });
+  const [savingAiSettings, setSavingAiSettings] = useState(false);
+
   // Loading & Toast
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ type: 'success' | 'danger'; text: string } | null>(null);
@@ -51,6 +91,9 @@ export const AdminDashboard: React.FC = () => {
   const [docForm, setDocForm] = useState({ name: '', email: '', password: '', specialization: '', experience: '', fees: '', department: '' });
   const [hospForm, setHospForm] = useState({ name: '', address: '', phone: '' });
   const [deptForm, setDeptForm] = useState({ name: '', description: '' });
+  const [policyForm, setPolicyForm] = useState({ title: '', category: 'General' });
+  const [policyFile, setPolicyFile] = useState<File | null>(null);
+  const [uploadingPolicy, setUploadingPolicy] = useState(false);
 
   // Patient Profile Edit Modal state
   const [editingPatient, setEditingPatient] = useState<PatientListItem | null>(null);
@@ -93,6 +136,20 @@ export const AdminDashboard: React.FC = () => {
       const deptRes = await axios.get(`${API_BASE_URL}/admin/departments`, { headers });
       setDepartments(deptRes.data.data);
 
+      // Hospital Policies (RAG Vector Store)
+      const polRes = await axios.get(`${API_BASE_URL}/admin/policies`, { headers });
+      setPolicies(polRes.data.data);
+
+      // AI Assistant Settings
+      try {
+        const aiRes = await axios.get(`${API_BASE_URL}/admin/ai-settings`, { headers });
+        if (aiRes.data && aiRes.data.data) {
+          setAiSettings(aiRes.data.data);
+        }
+      } catch (aiErr) {
+        console.warn('Could not load AI Assistant settings:', aiErr);
+      }
+
     } catch (err) {
       console.error('Failed to load admin dashboard tables');
     } finally {
@@ -103,6 +160,26 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Save AI Settings
+  const handleAiSettingsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingAiSettings(true);
+    try {
+      const token = localStorage.getItem('hospital_token');
+      const res = await axios.put(`${API_BASE_URL}/admin/ai-settings`, aiSettings, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data && res.data.data) {
+        setAiSettings(res.data.data);
+      }
+      triggerToast('success', 'AI Assistant settings & system prompt directives updated successfully!');
+    } catch (err: any) {
+      triggerToast('danger', err.response?.data?.message || 'Failed to update AI Assistant settings.');
+    } finally {
+      setSavingAiSettings(false);
+    }
+  };
 
   // Doctors activations
   const toggleDoctorVerify = async (userId: string, isVerified: boolean) => {
@@ -254,6 +331,56 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Upload and vectorize Hospital Policy PDF (Dual-write to MongoDB & PostgreSQL)
+  const handlePolicyUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!policyFile) {
+      triggerToast('danger', 'Please select a PDF file.');
+      return;
+    }
+    setUploadingPolicy(true);
+    try {
+      const token = localStorage.getItem('hospital_token');
+      const formData = new FormData();
+      formData.append('title', policyForm.title);
+      formData.append('category', policyForm.category);
+      formData.append('file', policyFile);
+
+      const res = await axios.post(`${API_BASE_URL}/admin/policies`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      triggerToast('success', res.data.message || 'Policy uploaded and vector indexed!');
+      setPolicyForm({ title: '', category: 'General' });
+      setPolicyFile(null);
+      const fileInput = document.getElementById('policyFileInput') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+      loadData();
+    } catch (err: any) {
+      triggerToast('danger', err.response?.data?.message || 'Failed to upload and parse policy PDF.');
+    } finally {
+      setUploadingPolicy(false);
+    }
+  };
+
+  // Delete policy and associated vector chunks from both databases
+  const deletePolicy = async (id: string, title: string) => {
+    if (!window.confirm(`Are you sure you want to delete policy "${title}"? This will remove all vector embeddings from both MongoDB and PostgreSQL.`)) return;
+    try {
+      const token = localStorage.getItem('hospital_token');
+      await axios.delete(`${API_BASE_URL}/admin/policies/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      triggerToast('success', 'Policy and vector chunks deleted from MongoDB & PostgreSQL.');
+      loadData();
+    } catch (err: any) {
+      triggerToast('danger', err.response?.data?.message || 'Failed to delete policy.');
+    }
+  };
+
   return (
     <div className="container-xxl py-5">
       <div className="container">
@@ -311,6 +438,18 @@ export const AdminDashboard: React.FC = () => {
                   onClick={() => { setActiveTab('departments'); setEditingPatient(null); }}
                 >
                   <i className="fa fa-folder-open me-2"></i> Departments
+                </button>
+                <button 
+                  className={`nav-link border-0 text-start py-3 mb-2 rounded ${activeTab === 'policies' ? 'active bg-primary text-white' : 'bg-transparent text-dark'}`}
+                  onClick={() => { setActiveTab('policies'); setEditingPatient(null); }}
+                >
+                  <i className="fa fa-file-pdf me-2"></i> Hospital Policies
+                </button>
+                <button 
+                  className={`nav-link border-0 text-start py-3 mb-2 rounded ${activeTab === 'ai-settings' ? 'active bg-primary text-white' : 'bg-transparent text-dark'}`}
+                  onClick={() => { setActiveTab('ai-settings'); setEditingPatient(null); }}
+                >
+                  <i className="fa fa-robot me-2"></i> AI Assistant Settings
                 </button>
                 <button 
                   className="nav-link border-0 text-start text-danger py-3 bg-transparent rounded mt-4"
@@ -442,6 +581,13 @@ export const AdminDashboard: React.FC = () => {
                           <div className="card border-0 bg-secondary text-white p-4 shadow-sm rounded-3">
                             <h2 className="text-white fw-bold mb-1">{stats?.totalContacts || 0}</h2>
                             <p className="mb-0 small"><i className="fa fa-envelope me-2"></i>Support Feedback</p>
+                          </div>
+                        </div>
+
+                        <div className="col-md-4">
+                          <div className="card border-0 bg-dark text-white p-4 shadow-sm rounded-3">
+                            <h2 className="text-white fw-bold mb-1">{stats?.totalPolicies || 0}</h2>
+                            <p className="mb-0 small"><i className="fa fa-file-pdf me-2"></i>Hospital Policy</p>
                           </div>
                         </div>
 
@@ -713,6 +859,349 @@ export const AdminDashboard: React.FC = () => {
                           </tbody>
                         </table>
                       </div>
+                    </div>
+                  )}
+
+                  {/* TAB 7: HOSPITAL POLICIES (RAG VECTOR STORE) */}
+                  {activeTab === 'policies' && (
+                    <div>
+                      <div className="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                          <h3 className="fw-bold m-0 text-dark">Hospital Policies & RAG Knowledge Base</h3>
+                          <p className="text-muted small mb-0">Upload official PDF policies. Text is automatically parsed, semantically chunked, vector-embedded via Gemini, and synchronized across <strong>MongoDB & PostgreSQL</strong> for live AI chat grounding.</p>
+                        </div>
+                        <span className="badge bg-primary px-3 py-2 fs-6">
+                          <i className="fa fa-database me-1"></i> Dual-Database RAG
+                        </span>
+                      </div>
+                      
+                      <div className="card bg-light border-0 shadow-sm p-4 mb-4">
+                        <h5 className="fw-bold mb-3"><i className="fa fa-file-upload text-primary me-2"></i>Upload Hospital Policy (PDF)</h5>
+                        <form onSubmit={handlePolicyUpload}>
+                          <div className="row g-3">
+                            <div className="col-md-5">
+                              <label className="form-label fw-bold small">Policy Title</label>
+                              <input 
+                                type="text" 
+                                className="form-control" 
+                                placeholder="e.g. ICU Visiting Hours & Patient Safety" 
+                                value={policyForm.title} 
+                                onChange={(e) => setPolicyForm({ ...policyForm, title: e.target.value })} 
+                                required 
+                              />
+                            </div>
+                            <div className="col-md-3">
+                              <label className="form-label fw-bold small">Category</label>
+                              <select 
+                                className="form-select" 
+                                value={policyForm.category} 
+                                onChange={(e) => setPolicyForm({ ...policyForm, category: e.target.value })}
+                              >
+                                <option value="General">General Policy</option>
+                                <option value="Visiting Hours">Visiting Hours</option>
+                                <option value="Insurance & Billing">Insurance & Billing</option>
+                                <option value="Emergency & ICU">Emergency & ICU</option>
+                                <option value="Admission & Discharge">Admission & Discharge</option>
+                                <option value="Patient Rights">Patient Rights</option>
+                              </select>
+                            </div>
+                            <div className="col-md-4">
+                              <label className="form-label fw-bold small">Select PDF File (max 5MB)</label>
+                              <input 
+                                id="policyFileInput"
+                                type="file" 
+                                className="form-control" 
+                                accept=".pdf,application/pdf"
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    setPolicyFile(e.target.files[0]);
+                                  }
+                                }} 
+                                required 
+                              />
+                            </div>
+                            <div className="col-12 mt-3 text-end">
+                              <button 
+                                className="btn btn-primary px-4 py-2" 
+                                type="submit"
+                                disabled={uploadingPolicy}
+                              >
+                                {uploadingPolicy ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    Extracting & Vectorizing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="fa fa-cloud-upload-alt me-2"></i>
+                                    Upload & Vectorize PDF
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </form>
+                      </div>
+
+                      <div className="table-responsive">
+                        <table className="table table-hover align-middle">
+                          <thead className="table-light">
+                            <tr>
+                              <th>Policy Title</th>
+                              <th>Category</th>
+                              <th>Vector Chunks</th>
+                              <th>File Size</th>
+                              <th>Uploaded On</th>
+                              <th>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {policies.length === 0 ? (
+                              <tr>
+                                <td colSpan={6} className="text-center text-muted py-4">
+                                  <i className="fa fa-folder-open fa-2x mb-2 d-block"></i>
+                                  No hospital policies uploaded yet. Upload a PDF above to enable AI RAG knowledge.
+                                </td>
+                              </tr>
+                            ) : (
+                              policies.map((p) => (
+                                <tr key={p._id}>
+                                  <td className="fw-bold text-dark">
+                                    <i className="fa fa-file-pdf text-danger me-2"></i>
+                                    {p.title}
+                                  </td>
+                                  <td>
+                                    <span className="badge bg-secondary">{p.category}</span>
+                                  </td>
+                                  <td>
+                                    <span className="badge bg-info text-dark">
+                                      <i className="fa fa-cubes me-1"></i> {p.totalChunks} Chunks
+                                    </span>
+                                  </td>
+                                  <td>
+                                    {(p.fileSize / 1024).toFixed(1)} KB
+                                  </td>
+                                  <td>
+                                    {new Date(p.createdAt).toLocaleDateString()}
+                                  </td>
+                                  <td>
+                                    <button 
+                                      className="btn btn-sm btn-outline-danger" 
+                                      onClick={() => deletePolicy(p._id, p.title)}
+                                      title="Delete policy and chunks from both MongoDB and PostgreSQL"
+                                    >
+                                      <i className="fa fa-trash-alt me-1"></i> Delete
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ================= AI ASSISTANT SETTINGS & PROMPT EDITOR ================= */}
+                  {activeTab === 'ai-settings' && (
+                    <div>
+                      <div className="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                        <div>
+                          <h3 className="fw-bold m-0 text-dark">
+                            <i className="fa fa-robot text-primary me-2"></i>
+                            AI Assistant & System Prompt Configuration
+                          </h3>
+                          <p className="text-muted small m-0 mt-1">
+                            Customize hospital profile, emergency line, bot persona, out-of-scope refusal rules, and clinic directives. All changes are stored in MongoDB and applied in real time to the live AI engine.
+                          </p>
+                        </div>
+                        {aiSettings.updatedAt && (
+                          <span className="badge bg-light text-muted border px-3 py-2">
+                            <i className="fa fa-history me-1"></i>
+                            Last Updated: {new Date(aiSettings.updatedAt).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+
+                      <form onSubmit={handleAiSettingsSubmit}>
+                        {/* 1. Core Hospital Details */}
+                        <div className="card border mb-4 shadow-none">
+                          <div className="card-header bg-light py-3">
+                            <h6 className="m-0 fw-bold text-dark">
+                              <i className="fa fa-hospital-alt text-primary me-2"></i>
+                              Core Hospital Identity & Contact Info
+                            </h6>
+                            <small className="text-muted">Injected dynamically into the AI agent identity and appointment confirmations.</small>
+                          </div>
+                          <div className="card-body">
+                            <div className="row g-3">
+                              <div className="col-md-6">
+                                <label className="form-label fw-bold small text-muted">Hospital Official Name</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={aiSettings.hospitalName}
+                                  onChange={(e) => setAiSettings({ ...aiSettings, hospitalName: e.target.value })}
+                                  placeholder="e.g. Amar Raho Hospital"
+                                  required
+                                />
+                              </div>
+                              <div className="col-md-6">
+                                <label className="form-label fw-bold small text-muted">Operating Hours / OPD Timings</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={aiSettings.operatingHours}
+                                  onChange={(e) => setAiSettings({ ...aiSettings, operatingHours: e.target.value })}
+                                  placeholder="e.g. Monday to Friday, 09:00 AM to 12:00 PM"
+                                  required
+                                />
+                              </div>
+                              <div className="col-md-6">
+                                <label className="form-label fw-bold small text-muted">Emergency & Helpline Phone</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={aiSettings.emergencyPhone}
+                                  onChange={(e) => setAiSettings({ ...aiSettings, emergencyPhone: e.target.value })}
+                                  placeholder="e.g. +91 98765-AMAR-1"
+                                  required
+                                />
+                              </div>
+                              <div className="col-md-6">
+                                <label className="form-label fw-bold small text-muted">Official Support Email</label>
+                                <input
+                                  type="email"
+                                  className="form-control"
+                                  value={aiSettings.supportEmail}
+                                  onChange={(e) => setAiSettings({ ...aiSettings, supportEmail: e.target.value })}
+                                  placeholder="e.g. support@amarraho.com"
+                                  required
+                                />
+                              </div>
+                              <div className="col-12">
+                                <label className="form-label fw-bold small text-muted">Hospital Physical Address</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={aiSettings.address}
+                                  onChange={(e) => setAiSettings({ ...aiSettings, address: e.target.value })}
+                                  placeholder="e.g. Plot 404, Yamaraj Bypass Road, Near Swarg Lok U-Turn, Narak-Pur"
+                                  required
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2. Persona & Welcome Greeting */}
+                        <div className="card border mb-4 shadow-none">
+                          <div className="card-header bg-light py-3">
+                            <h6 className="m-0 fw-bold text-dark">
+                              <i className="fa fa-comment-dots text-primary me-2"></i>
+                              AI Personality & Welcome Greeting
+                            </h6>
+                            <small className="text-muted">Controls how the AI assistant greets patients and communicates.</small>
+                          </div>
+                          <div className="card-body">
+                            <div className="row g-3">
+                              <div className="col-12">
+                                <label className="form-label fw-bold small text-muted">Persona & Tone of Voice</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={aiSettings.botPersonality}
+                                  onChange={(e) => setAiSettings({ ...aiSettings, botPersonality: e.target.value })}
+                                  placeholder="e.g. polite, empathetic, concise, and professional"
+                                  required
+                                />
+                              </div>
+                              <div className="col-12">
+                                <label className="form-label fw-bold small text-muted">Welcome Greeting (Opening message to patients)</label>
+                                <textarea
+                                  className="form-control"
+                                  rows={3}
+                                  value={aiSettings.welcomeGreeting}
+                                  onChange={(e) => setAiSettings({ ...aiSettings, welcomeGreeting: e.target.value })}
+                                  placeholder="Welcome to Amar Raho Hospital! I am your AI Support & Navigational Guide..."
+                                  required
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 3. Out-of-Scope Domain Boundaries */}
+                        <div className="card border mb-4 shadow-none">
+                          <div className="card-header bg-light py-3">
+                            <h6 className="m-0 fw-bold text-dark">
+                              <i className="fa fa-shield-alt text-danger me-2"></i>
+                              Out-of-Scope Domain Boundary & Refusal Directives
+                            </h6>
+                            <small className="text-muted">Strict guardrails ensuring the AI refuses non-healthcare topics (programming, trivia, entertainment, etc.).</small>
+                          </div>
+                          <div className="card-body">
+                            <label className="form-label fw-bold small text-muted">Refusal Directives & Strict Subject Restrictions</label>
+                            <textarea
+                              className="form-control font-monospace small"
+                              rows={5}
+                              value={aiSettings.outOfScopeRules}
+                              onChange={(e) => setAiSettings({ ...aiSettings, outOfScopeRules: e.target.value })}
+                              required
+                            />
+                            <div className="form-text small text-muted mt-2">
+                              <i className="fa fa-info-circle me-1"></i>
+                              Hospital policies, doctor rosters, and appointment booking flow remain protected and will always be accessible regardless of refusal text.
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 4. Custom Directives */}
+                        <div className="card border mb-4 shadow-none">
+                          <div className="card-header bg-light py-3">
+                            <h6 className="m-0 fw-bold text-dark">
+                              <i className="fa fa-pencil-alt text-primary me-2"></i>
+                              Custom Operational Directives & Special Clinic Rules
+                            </h6>
+                            <small className="text-muted">Add temporary announcements, doctor schedules, specific triage tips, or clinic notices.</small>
+                          </div>
+                          <div className="card-body">
+                            <label className="form-label fw-bold small text-muted">Custom Instructions (Optional)</label>
+                            <textarea
+                              className="form-control"
+                              rows={4}
+                              value={aiSettings.customInstructions}
+                              onChange={(e) => setAiSettings({ ...aiSettings, customInstructions: e.target.value })}
+                              placeholder="e.g. Note: Dr. Arjun Sharma will be on surgical rounds between 11 AM - 12 PM this Wednesday. Remind cardiac patients to bring their ECG reports."
+                            />
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="d-flex justify-content-between align-items-center pt-2">
+                          <div className="text-muted small">
+                            <i className="fa fa-bolt text-warning me-1"></i>
+                            Saved changes reflect immediately for all new AI chats without restarting the server.
+                          </div>
+                          <button
+                            type="submit"
+                            className="btn btn-primary px-4 py-2 fw-bold"
+                            disabled={savingAiSettings}
+                          >
+                            {savingAiSettings ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                                Saving Settings...
+                              </>
+                            ) : (
+                              <>
+                                <i className="fa fa-save me-2"></i>
+                                Save AI Assistant Settings
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </form>
                     </div>
                   )}
 

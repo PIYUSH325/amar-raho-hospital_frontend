@@ -5,12 +5,31 @@ html, body {
     overflow-x: hidden;
     margin: 0;
     padding: 0;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+h1, h2, h3, h4, h5, h6, .btn, .nav-link, .badge {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+
+/* Modern Proportion Scaling */
+@media (min-width: 992px) {
+    body {
+        zoom: 0.85;
+    }
 }
 
 :root {
-    --primary: #0463FA;
-    --light: #EFF5FF;
-    --dark: #1B2C51;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --light: #f8fafc;
+    --dark: #0f172a;
+    --primary-gradient: linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #4f46e5 100%);
+    --accent-gradient: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #8b5cf6 100%);
+    --glass-bg: rgba(255, 255, 255, 0.88);
+    --glass-border: rgba(255, 255, 255, 0.6);
+    --card-shadow: 0 15px 35px -10px rgba(37, 99, 235, 0.12);
+    --hover-shadow: 0 25px 50px -12px rgba(37, 99, 235, 0.25);
 }
 
 .fw-medium {
@@ -527,4 +546,240 @@ html, body {
 
 .footer .copyright a:hover {
     color: var(--primary);
+}
+
+/********** Modern Curved Design & Animation System **********/
+
+:root {
+    --primary-gradient: linear-gradient(135deg, #0463FA 0%, #0241A7 100%);
+    --accent-gradient: linear-gradient(135deg, #00C6FF 0%, #0072FF 100%);
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.5);
+    --card-shadow: 0 12px 35px -10px rgba(4, 99, 250, 0.12);
+    --hover-shadow: 0 22px 45px -10px rgba(4, 99, 250, 0.22);
+}
+
+/* Curved Corner Utility Classes */
+.rounded-4 {
+    border-radius: 1.5rem !important; /* 24px */
+}
+
+.rounded-5 {
+    border-radius: 2.25rem !important; /* 36px */
+}
+
+.rounded-pill-lg {
+    border-radius: 50px !important;
+}
+
+.rounded-top-4 {
+    border-top-left-radius: 1.5rem !important;
+    border-top-right-radius: 1.5rem !important;
+}
+
+.rounded-bottom-4 {
+    border-bottom-left-radius: 1.5rem !important;
+    border-bottom-right-radius: 1.5rem !important;
+}
+
+/* Curved Card Styling */
+.curved-card {
+    border-radius: 1.75rem !important;
+    border: 1px solid rgba(4, 99, 250, 0.08);
+    box-shadow: var(--card-shadow);
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.curved-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--hover-shadow);
+    border-color: rgba(4, 99, 250, 0.2);
+}
+
+/* Glassmorphism Classes */
+.glass-card {
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: var(--card-shadow);
+    border-radius: 1.5rem !important;
+}
+
+.glass-navbar {
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Organic Wave Divider & Curved Background Containers */
+.curved-banner-bg {
+    border-radius: 0 0 3rem 3rem !important;
+    overflow: hidden;
+}
+
+.curved-section-header {
+    border-radius: 2rem;
+    padding: 2rem;
+    background: linear-gradient(180deg, rgba(239, 245, 255, 0.8) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.wavy-svg-divider {
+    width: 100%;
+    line-height: 0;
+    overflow: hidden;
+    fill: #ffffff;
+}
+
+/* Animations & Micro-Interactions */
+@keyframes floatSlow {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+}
+
+@keyframes pulseGlow {
+    0% { box-shadow: 0 0 0 0 rgba(4, 99, 250, 0.4); }
+    70% { box-shadow: 0 0 0 18px rgba(4, 99, 250, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(4, 99, 250, 0); }
+}
+
+@keyframes shimmerGlow {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.animate-float {
+    animation: floatSlow 4s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+    animation: pulseGlow 2.5s infinite;
+}
+
+/* Interactive Pill Button Upgrade */
+.btn-pill-primary {
+    background: var(--primary-gradient);
+    color: #ffffff !important;
+    border-radius: 50px !important;
+    padding: 0.75rem 2rem;
+    border: none;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    box-shadow: 0 8px 20px rgba(4, 99, 250, 0.25);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.btn-pill-primary:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 14px 28px rgba(4, 99, 250, 0.35);
+    color: #ffffff !important;
+}
+
+.btn-pill-outline {
+    background: transparent;
+    color: var(--primary) !important;
+    border: 2px solid var(--primary);
+    border-radius: 50px !important;
+    padding: 0.65rem 1.8rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-pill-outline:hover {
+    background: var(--primary);
+    color: #ffffff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(4, 99, 250, 0.2);
+}
+
+/* Service & Team Item Enhancements */
+.service-item {
+    border-radius: 1.5rem !important;
+    overflow: hidden;
+    transition: all 0.4s ease;
+}
+
+.service-item:hover {
+    transform: translateY(-8px);
+    border-radius: 1.75rem !important;
+}
+
+.team-item {
+    border-radius: 1.75rem !important;
+    overflow: hidden;
+    transition: all 0.4s ease;
+}
+
+.team-item img {
+    border-radius: 1.5rem 1.5rem 0 0;
+    transition: transform 0.5s ease;
+}
+
+.team-item:hover img {
+    transform: scale(1.05);
+}
+
+/* Chatbot Floating Widget Animations */
+.chatbot-bubble-trigger {
+    border-radius: 50px !important;
+    animation: pulseGlow 3s infinite;
+    transition: all 0.3s ease;
+}
+
+.chatbot-bubble-trigger:hover {
+    transform: scale(1.08);
+}
+
+/* Gradient Text & Vibrant Accent Utilities */
+.gradient-text {
+    background: linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #4f46e5 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.gradient-text-accent {
+    background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #8b5cf6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #4f46e5 100%) !important;
+}
+
+.bg-gradient-accent {
+    background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #8b5cf6 100%) !important;
+}
+
+/* 3D Hover Elevation Cards */
+.hover-3d-card {
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.hover-3d-card:hover {
+    transform: translateY(-10px) rotateX(2deg) rotateY(-2deg) scale(1.02);
+    box-shadow: 0 30px 60px -15px rgba(37, 99, 235, 0.25) !important;
+}
+
+/* Smooth Scrollbar Customization */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }

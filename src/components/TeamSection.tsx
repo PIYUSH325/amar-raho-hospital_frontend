@@ -44,8 +44,10 @@ export const TeamSection: React.FC = () => {
     <div className="container-xxl py-5">
       <div className="container">
         <div className="text-center mx-auto mb-5 wow fadeInUp" data-wow-delay="0.1s" style={{ maxWidth: '600px' }}>
-          <p className="d-inline-block border rounded-pill py-1 px-4">Doctors</p>
-          <h1>Our Experience Doctors</h1>
+          <span className="badge bg-light text-primary border border-primary-subtle rounded-pill py-2 px-4 mb-3 fw-semibold">
+            <i className="fa fa-user-md me-2"></i>Doctors
+          </span>
+          <h1 className="fw-bold">Our Experienced Doctors</h1>
         </div>
         <div className="row g-4">
           {doctors.map((doc, idx) => (
@@ -55,17 +57,17 @@ export const TeamSection: React.FC = () => {
               delay={doc.delay} 
               className="col-lg-3 col-md-6"
             >
-              <div className="team-item position-relative rounded overflow-hidden">
-                <div className="overflow-hidden">
-                  <img className="img-fluid" src={doc.image} alt={doc.name} />
+              <div className="curved-card team-item position-relative bg-white h-100">
+                <div className="overflow-hidden rounded-top-4">
+                  <img className="img-fluid w-100" src={doc.image} alt={doc.name} style={{ height: '280px', objectFit: 'cover' }} />
                 </div>
-                <div className="team-text bg-light text-center p-4">
-                  <h5>{doc.name}</h5>
-                  <p className="text-primary">{doc.department}</p>
-                  <div className="team-social text-center">
-                    <a className="btn btn-square" href=""><i className="fab fa-facebook-f"></i></a>
-                    <a className="btn btn-square" href=""><i className="fab fa-twitter"></i></a>
-                    <a className="btn btn-square" href=""><i className="fab fa-instagram"></i></a>
+                <div className="team-text bg-white text-center p-4">
+                  <h5 className="fw-bold mb-2">{doc.name}</h5>
+                  <span className="badge bg-primary-subtle text-primary rounded-pill px-3 py-1 mb-3 small">{doc.department}</span>
+                  <div className="team-social text-center mt-2">
+                    <a className="btn btn-square me-1 rounded-circle" href=""><i className="fab fa-facebook-f"></i></a>
+                    <a className="btn btn-square me-1 rounded-circle" href=""><i className="fab fa-twitter"></i></a>
+                    <a className="btn btn-square rounded-circle" href=""><i className="fab fa-instagram"></i></a>
                   </div>
                 </div>
               </div>

@@ -20,7 +20,9 @@ export const AppointmentForm: React.FC = () => {
   const [doctorsList, setDoctorsList] = useState<any[]>([]);
   const { user } = useAuth();
   
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const defaultHost = typeof window !== 'undefined' ? `http://${window.location.hostname}:5001/api` : 'http://localhost:5001/api';
+  const API_BASE_URL = isLocal ? 'http://localhost:5001/api' : (import.meta.env.VITE_API_BASE_URL || defaultHost);
 
   // Fetch verified doctors dynamically from the backend database
   useEffect(() => {
@@ -100,35 +102,37 @@ export const AppointmentForm: React.FC = () => {
   return (
     <div className="container-xxl py-5">
       <div className="container">
-        <div className="row g-5">
+        <div className="row g-5 align-items-center">
           <ScrollReveal animation="fadeInUp" delay="0.1s" className="col-lg-6">
-            <p className="d-inline-block border rounded-pill py-1 px-4">Appointment</p>
-            <h1 className="mb-4">Make An Appointment To Visit Our Doctor</h1>
-            <p className="mb-4">Look, don’t sit there reading meaningless Latin filler text while your fever hits 104°F. Your local neighborhood WhatsApp group cannot cure that weird rash. Stop scrolling Google Docs, put down the turmeric milk, and book an appointment before your family starts eyeing your property.</p>
-            <div className="bg-light rounded d-flex align-items-center p-5 mb-4">
-              <div className="d-flex flex-shrink-0 align-items-center justify-content-center rounded-circle bg-white" style={{ width: '55px', height: '55px' }}>
-                <i className="fa fa-phone-alt text-primary"></i>
+            <span className="badge bg-light text-primary border border-primary-subtle rounded-pill py-2 px-4 mb-3 fw-semibold">
+              <i className="fa fa-calendar-check me-2"></i>Appointment
+            </span>
+            <h1 className="mb-4 fw-bold">Make An Appointment To Visit Our Doctor</h1>
+            <p className="mb-4 text-muted fs-5">Look, don’t sit there reading meaningless Latin filler text while your fever hits 104°F. Your local neighborhood WhatsApp group cannot cure that weird rash. Stop scrolling Google Docs, put down the turmeric milk, and book an appointment before your family starts eyeing your property.</p>
+            <div className="curved-card d-flex align-items-center p-4 mb-4 bg-white shadow-sm">
+              <div className="d-flex flex-shrink-0 align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary" style={{ width: '60px', height: '60px', background: 'rgba(4, 99, 250, 0.1)' }}>
+                <i className="fa fa-phone-alt text-primary fs-4"></i>
               </div>
               <div className="ms-4">
-                <p className="mb-2">Call Us Now</p>
-                <h5 className="mb-0">+91 98765-AMAR-1</h5>
+                <p className="mb-1 text-muted small">Call Us Now</p>
+                <h5 className="mb-0 fw-bold text-dark">+91 98765-AMAR-1</h5>
               </div>
             </div>
-            <div className="bg-light rounded d-flex align-items-center p-5">
-              <div className="d-flex flex-shrink-0 align-items-center justify-content-center rounded-circle bg-white" style={{ width: '55px', height: '55px' }}>
-                <i className="fa fa-envelope-open text-primary"></i>
+            <div className="curved-card d-flex align-items-center p-4 bg-white shadow-sm">
+              <div className="d-flex flex-shrink-0 align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary" style={{ width: '60px', height: '60px', background: 'rgba(4, 99, 250, 0.1)' }}>
+                <i className="fa fa-envelope-open text-primary fs-4"></i>
               </div>
               <div className="ms-4">
-                <p className="mb-2">Mail Us Now</p>
-                <h5 className="mb-0">no.google.docs@amarrahohospital.com </h5>
+                <p className="mb-1 text-muted small">Mail Us Now</p>
+                <h5 className="mb-0 fw-bold text-dark">no.google.docs@amarrahohospital.com </h5>
               </div>
             </div>
           </ScrollReveal>
           <ScrollReveal animation="fadeInUp" delay="0.5s" className="col-lg-6">
-            <div className="bg-light rounded h-100 d-flex align-items-center p-5">
+            <div className="curved-card bg-white p-4 p-xl-5 shadow-lg">
               <form onSubmit={handleSubmit} style={{ width: '100%' }}>
                 {statusMsg && (
-                  <div className={`alert alert-${statusMsg.type} mb-4`} role="alert">
+                  <div className={`alert alert-${statusMsg.type} rounded-4 mb-4`} role="alert">
                     {statusMsg.text}
                   </div>
                 )}
@@ -137,7 +141,7 @@ export const AppointmentForm: React.FC = () => {
                     <input 
                       type="text" 
                       name="name"
-                      className="form-control border-0" 
+                      className="form-control rounded-4 bg-light border-0 px-3" 
                       placeholder="Your Name" 
                       style={{ height: '55px' }}
                       value={formData.name}
@@ -149,7 +153,7 @@ export const AppointmentForm: React.FC = () => {
                     <input 
                       type="email" 
                       name="email"
-                      className="form-control border-0" 
+                      className="form-control rounded-4 bg-light border-0 px-3" 
                       placeholder="Your Email" 
                       style={{ height: '55px' }}
                       value={formData.email}
@@ -161,7 +165,7 @@ export const AppointmentForm: React.FC = () => {
                     <input 
                       type="text" 
                       name="mobile"
-                      className="form-control border-0" 
+                      className="form-control rounded-4 bg-light border-0 px-3" 
                       placeholder="Your Mobile" 
                       style={{ height: '55px' }}
                       value={formData.mobile}
@@ -172,7 +176,7 @@ export const AppointmentForm: React.FC = () => {
                   <div className="col-12 col-sm-6">
                     <select 
                       name="doctor"
-                      className="form-select border-0 text-capitalize" 
+                      className="form-select rounded-4 bg-light border-0 px-3 text-capitalize" 
                       style={{ height: '55px' }}
                       value={formData.doctor}
                       onChange={handleDoctorChange}
@@ -189,7 +193,7 @@ export const AppointmentForm: React.FC = () => {
                     <input 
                       type="date" 
                       name="date"
-                      className="form-control border-0" 
+                      className="form-control rounded-4 bg-light border-0 px-3" 
                       style={{ height: '55px' }}
                       value={formData.date}
                       onChange={handleChange}
@@ -200,7 +204,7 @@ export const AppointmentForm: React.FC = () => {
                     <input 
                       type="time" 
                       name="time"
-                      className="form-control border-0" 
+                      className="form-control rounded-4 bg-light border-0 px-3" 
                       style={{ height: '55px' }}
                       value={formData.time}
                       onChange={handleChange}
@@ -210,8 +214,8 @@ export const AppointmentForm: React.FC = () => {
                   <div className="col-12">
                     <textarea 
                       name="problem"
-                      className="form-control border-0" 
-                      rows={5} 
+                      className="form-control rounded-4 bg-light border-0 p-3" 
+                      rows={4} 
                       placeholder="Describe your problem"
                       value={formData.problem}
                       onChange={handleChange}
@@ -220,11 +224,11 @@ export const AppointmentForm: React.FC = () => {
                   </div>
                   <div className="col-12">
                     <button 
-                      className="btn btn-primary w-100 py-3" 
+                      className="btn btn-pill-primary w-100 py-3 shadow" 
                       type="submit"
                       disabled={loading}
                     >
-                      {loading ? 'Booking...' : 'Book Appointment'}
+                      {loading ? 'Booking...' : 'Book Appointment'} <i className="fa fa-paper-plane ms-2"></i>
                     </button>
                   </div>
                 </div>

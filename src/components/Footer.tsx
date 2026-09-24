@@ -39,6 +39,7 @@ export const Footer: React.FC = () => {
             <Link className="btn btn-link" to="/about">About Us</Link>
             <Link className="btn btn-link" to="/contact">Contact Us</Link>
             <Link className="btn btn-link" to="/services">Our Services</Link>
+            <Link className="btn btn-link" to="/policies">Hospital Policies</Link>
             <a className="btn btn-link" href="">Terms & Condition</a>
             <a className="btn btn-link" href="">Support</a>
           </div>

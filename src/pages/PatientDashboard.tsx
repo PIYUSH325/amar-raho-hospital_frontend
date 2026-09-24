@@ -250,9 +250,9 @@ export const PatientDashboard: React.FC = () => {
           
           {/* Left Sidebar Layout */}
           <div className="col-lg-3 col-md-4">
-            <div className="bg-light rounded-3 p-4 border shadow-sm text-center">
-              <div className="d-flex align-items-center justify-content-center rounded-circle bg-primary text-white mx-auto mb-3" style={{ width: '80px', height: '80px' }}>
-                <h3 className="m-0 text-white">{user?.name ? user.name.slice(0,2).toUpperCase() : 'PT'}</h3>
+            <div className="curved-card glass-card p-4 border-0 shadow-lg text-center rounded-4 mb-4">
+              <div className="d-flex align-items-center justify-content-center rounded-circle bg-gradient-primary text-white mx-auto mb-3 shadow" style={{ width: '80px', height: '80px' }}>
+                <h3 className="m-0 text-white fw-bold">{user?.name ? user.name.slice(0,2).toUpperCase() : 'PT'}</h3>
               </div>
               <h5 className="mb-1 fw-bold text-dark">{user?.name}</h5>
               <p className="text-muted small mb-4">{user?.email}</p>

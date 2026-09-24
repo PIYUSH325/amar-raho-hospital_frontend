@@ -12,7 +12,9 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const rawUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin.replace('3000', '5001');
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const defaultHost = isLocal ? 'http://localhost:5001' : `http://${window.location.hostname}:5001`;
+    const rawUrl = isLocal ? 'http://localhost:5001' : (import.meta.env.VITE_API_BASE_URL || defaultHost);
     const SOCKET_URL = rawUrl.replace('/api', '');
     const newSocket = io(SOCKET_URL, {
         transports: ['polling', 'websocket'],

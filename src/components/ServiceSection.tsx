@@ -52,8 +52,10 @@ export const ServiceSection: React.FC = () => {
     <div className="container-xxl py-5">
       <div className="container">
         <div className="text-center mx-auto mb-5 wow fadeInUp" data-wow-delay="0.1s" style={{ maxWidth: '600px' }}>
-          <p className="d-inline-block border rounded-pill py-1 px-4">Services</p>
-          <h1>Health Care Solutions</h1>
+          <span className="badge bg-light text-primary border border-primary-subtle rounded-pill py-2 px-4 mb-3 fw-semibold">
+            <i className="fa fa-stethoscope me-2"></i>Services
+          </span>
+          <h1 className="fw-bold">Health Care Solutions</h1>
         </div>
         <div className="row g-4">
           {services.map((service, index) => (
@@ -63,13 +65,13 @@ export const ServiceSection: React.FC = () => {
               delay={service.delay} 
               className="col-lg-4 col-md-6"
             >
-              <div className="service-item bg-light rounded h-100 p-5">
-                <div className="d-inline-flex align-items-center justify-content-center bg-white rounded-circle mb-4" style={{ width: '65px', height: '65px' }}>
-                  <i className={`fa ${service.icon} text-primary fs-4`}></i>
+              <div className="curved-card service-item bg-white h-100 p-4 p-xl-5">
+                <div className="d-inline-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-circle mb-4 shadow-sm" style={{ width: '70px', height: '70px', background: 'rgba(4, 99, 250, 0.08)' }}>
+                  <i className={`fa ${service.icon} text-primary fs-3`}></i>
                 </div>
-                <h4 className="mb-3">{service.title}</h4>
-                <p className="mb-4">{service.description}</p>
-                <a className="btn" href=""><i className="fa fa-plus text-primary me-3"></i>Read More</a>
+                <h4 className="mb-3 fw-bold">{service.title}</h4>
+                <p className="mb-4 text-muted">{service.description}</p>
+                <a className="btn btn-pill-outline btn-sm py-2 px-4" href="#/service-details"><i className="fa fa-arrow-right me-2"></i>Read More</a>
               </div>
             </ScrollReveal>
           ))}
