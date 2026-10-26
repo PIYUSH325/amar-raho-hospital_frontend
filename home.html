@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amar Raho Hospital - Good Health Is The Root Of All Happiness</title>
+
+  <!-- Google Web Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- Separated CSS Stylesheet -->
+  <link rel="stylesheet" href="home.css" />
+</head>
+<body>
+
+  <!-- ================= TOPBAR ================= -->
+  <header class="topbar">
+    <div class="container topbar-content">
+      <div class="topbar-info">
+        <span><i class="fa-solid fa-location-dot"></i> Plot 404, Bypass Road, Narak-Pur</span>
+        <span><i class="fa-solid fa-envelope"></i> contact@amarrahohospital.com</span>
+        <span><i class="fa-solid fa-phone"></i> +91 98765-AMAR-1</span>
+      </div>
+      <div class="topbar-social">
+        <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+        <a href="#" aria-label="Twitter"><i class="fa-brands fa-twitter"></i></a>
+        <a href="#" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
+        <a href="#" aria-label="YouTube"><i class="fa-brands fa-youtube"></i></a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= NAVBAR ================= -->
+  <nav class="navbar">
+    <div class="container navbar-content">
+      <a href="#" class="brand-logo">
+        <i class="fa-regular fa-hospital"></i>
+        <span>Amar Raho</span>
+      </a>
+
+      <button class="mobile-toggle" id="mobileMenuBtn" aria-label="Toggle navigation">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#home" class="nav-link active">Home</a></li>
+        <li><a href="#about" class="nav-link">About</a></li>
+        <li><a href="#services" class="nav-link">Services</a></li>
+        <li><a href="#features" class="nav-link">Features</a></li>
+        <li><a href="#doctors" class="nav-link">Doctors</a></li>
+        <li><a href="#appointment" class="nav-link">Appointment</a></li>
+      </ul>
+
+      <div class="nav-cta">
+        <a href="#appointment" class="btn btn-primary">
+          <i class="fa-solid fa-calendar-check"></i> Book Visit
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ================= HERO BANNER ================= -->
+  <section class="hero-section" id="home">
+    <div class="container">
+      <div class="hero-grid">
+        <div class="hero-text">
+          <div class="hero-badge">
+            <i class="fa-solid fa-shield-heart"></i> Premier Healthcare Network
+          </div>
+          <h1 class="hero-title">
+            Good Health Is The Root Of All Happiness
+          </h1>
+          <p class="hero-desc">
+            Experience compassionate clinical care, 24/7 emergency response, modern diagnostics, and AI-assisted telemedicine consultation — all under one trusted roof.
+          </p>
+          <div class="hero-actions">
+            <a href="#appointment" class="btn btn-white">
+              <i class="fa-solid fa-calendar-plus"></i> Book Appointment
+            </a>
+            <a href="#doctors" class="btn btn-hero-outline">
+              <i class="fa-solid fa-user-doctor"></i> Meet Doctors
+            </a>
+          </div>
+
+          <div class="hero-stats">
+            <div class="stat-item">
+              <h3>123+</h3>
+              <p>Expert Doctors</p>
+            </div>
+            <div class="stat-item">
+              <h3>1,234+</h3>
+              <p>Medical Staff</p>
+            </div>
+            <div class="stat-item">
+              <h3>12,345+</h3>
+              <p>Happy Patients</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-card-wrap">
+          <div class="hero-card">
+            <div class="hero-card-icon">
+              <i class="fa-solid fa-stethoscope"></i>
+            </div>
+            <h4>Emergency Triage 24/7</h4>
+            <p>Immediate ambulance dispatch, rapid trauma response, and ICUs always prepared.</p>
+            <a href="#appointment" class="btn btn-white">Emergency Hotline</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Organic Wave Divider -->
+    <div class="hero-wave">
+      <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
+        <path fill="#ffffff" fill-opacity="1" d="M0,32L60,42.7C120,53,240,75,360,80C480,85,600,75,720,58.7C840,43,960,21,1080,21.3C1200,21,1320,43,1380,53.3L1440,64L1440,120L1380,120C1320,120,1200,120,1080,120C960,120,480,120,360,120C240,120,120,120,60,120L0,120Z"></path>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ================= ABOUT SECTION ================= -->
+  <section class="section" id="about">
+    <div class="container">
+      <div class="about-grid">
+        <div class="about-images">
+          <img src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=700&q=80" alt="Hospital Interior" class="about-img-main" />
+          <img src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=500&q=80" alt="Specialist Doctor" class="about-img-overlap" />
+        </div>
+
+        <div class="about-content">
+          <span class="badge-tag"><i class="fa-solid fa-circle-info"></i> About Us</span>
+          <h2 class="section-title">Why You Should Trust Us? Get To Know About Us!</h2>
+          <p class="section-desc">
+            Amar Raho Hospital has been delivering compassionate, world-class healthcare. Our team combines clinical expertise with advanced robotic diagnostics and round-the-clock emergency support.
+          </p>
+
+          <div class="about-points">
+            <div class="about-point">
+              <i class="fa-regular fa-circle-check"></i>
+              <span>Quality Healthcare</span>
+            </div>
+            <div class="about-point">
+              <i class="fa-regular fa-circle-check"></i>
+              <span>Only Qualified Doctors</span>
+            </div>
+            <div class="about-point">
+              <i class="fa-regular fa-circle-check"></i>
+              <span>24/7 Emergency Support</span>
+            </div>
+            <div class="about-point">
+              <i class="fa-regular fa-circle-check"></i>
+              <span>Modern Lab Diagnostics</span>
+            </div>
+          </div>
+
+          <a href="#services" class="btn btn-primary">
+            Explore Services <i class="fa-solid fa-arrow-right"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SERVICES SECTION ================= -->
+  <section class="section section-bg" id="services">
+    <div class="container">
+      <div class="section-header">
+        <span class="badge-tag">Services</span>
+        <h2 class="section-title">Health Care Solutions</h2>
+        <p class="section-desc">Comprehensive medical specialties supported by experienced consultants and state-of-the-art facilities.</p>
+      </div>
+
+      <div class="services-grid">
+        <div class="service-card">
+          <div class="service-icon"><i class="fa-solid fa-heart-pulse"></i></div>
+          <h4>Cardiology</h4>
+          <p>Advanced cardiac monitoring, angioplasty, hypertension management, and preventive heart care.</p>
+          <a href="#appointment" class="service-link">Consult Cardiologist <i class="fa-solid fa-chevron-right"></i></a>
+        </div>
+
+        <div class="service-card">
+          <div class="service-icon"><i class="fa-solid fa-lungs"></i></div>
+          <h4>Pulmonary</h4>
+          <p>Specialized respiratory care, asthma management, spirometry tests, and pulmonary rehabilitation.</p>
+          <a href="#appointment" class="service-link">Consult Specialist <i class="fa-solid fa-chevron-right"></i></a>
+        </div>
+
+        <div class="service-card">
+          <div class="service-icon"><i class="fa-solid fa-brain"></i></div>
+          <h4>Neurology</h4>
+          <p>Expert diagnosis for neurological disorders, epilepsy, stroke rehabilitation, and spine treatments.</p>
+          <a href="#appointment" class="service-link">Consult Neurologist <i class="fa-solid fa-chevron-right"></i></a>
+        </div>
+
+        <div class="service-card">
+          <div class="service-icon"><i class="fa-solid fa-bone"></i></div>
+          <h4>Orthopedics</h4>
+          <p>Joint replacement surgery, sports injury rehabilitation, fracture fixation, and spinal health.</p>
+          <a href="#appointment" class="service-link">Consult Orthopedic <i class="fa-solid fa-chevron-right"></i></a>
+        </div>
+
+        <div class="service-card">
+          <div class="service-icon"><i class="fa-solid fa-vial-virus"></i></div>
+          <h4>Laboratory & Pathology</h4>
+          <p>Precision automated diagnostics, biochemistry, hematology, and genetic screening profiles.</p>
+          <a href="#appointment" class="service-link">Book Lab Test <i class="fa-solid fa-chevron-right"></i></a>
+        </div>
+
+        <div class="service-card">
+          <div class="service-icon"><i class="fa-solid fa-tooth"></i></div>
+          <h4>Dental Surgery</h4>
+          <p>Complete dental restoration, root canals, oral surgery, orthodontic braces, and cosmetic dentistry.</p>
+          <a href="#appointment" class="service-link">Consult Dentist <i class="fa-solid fa-chevron-right"></i></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FEATURES SECTION ================= -->
+  <section class="section" id="features">
+    <div class="container">
+      <div class="section-header">
+        <span class="badge-tag">Features</span>
+        <h2 class="section-title">Why Choose Amar Raho?</h2>
+        <p class="section-desc">Discover what makes our hospital the preferred choice for thousands of families.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-box">
+          <i class="fa-solid fa-user-doctor"></i>
+          <h4>Qualified Doctors</h4>
+          <p>Board-certified specialists with decades of clinical excellence.</p>
+        </div>
+        <div class="feature-box">
+          <i class="fa-solid fa-truck-medical"></i>
+          <h4>Emergency Services</h4>
+          <p>Rapid ambulance dispatch with GPS-tracked emergency response.</p>
+        </div>
+        <div class="feature-box">
+          <i class="fa-solid fa-microscope"></i>
+          <h4>Accurate Testing</h4>
+          <p>NABL-certified pathology labs delivering same-day verified reports.</p>
+        </div>
+        <div class="feature-box">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <h4>24/7 Availability</h4>
+          <p>Round-the-clock intensive care, pharmacy, and triage teams ready.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= APPOINTMENT FORM ================= -->
+  <section class="section section-bg" id="appointment">
+    <div class="container">
+      <div class="appointment-card">
+        <div class="appointment-info">
+          <span class="badge-tag">Appointment</span>
+          <h3>Make An Appointment To Visit Our Doctor</h3>
+          <p>Fill out the form to schedule a physical consultation or telemedicine session with our senior medical team.</p>
+
+          <div class="info-item">
+            <div class="info-icon"><i class="fa-solid fa-phone"></i></div>
+            <div>
+              <strong>Emergency Phone</strong>
+              <p>+91 98765-AMAR-1</p>
+            </div>
+          </div>
+          <div class="info-item">
+            <div class="info-icon"><i class="fa-solid fa-clock"></i></div>
+            <div>
+              <strong>Visiting Hours</strong>
+              <p>Mon - Sat: 8:00 AM - 9:00 PM</p>
+            </div>
+          </div>
+        </div>
+
+        <form class="appointment-form" id="bookingForm">
+          <div class="form-group">
+            <label class="form-label">Patient Name</label>
+            <input type="text" class="form-control" placeholder="John Doe" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <input type="tel" class="form-control" placeholder="+91 98765 43210" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="form-control" placeholder="john@example.com" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Department</label>
+            <select class="form-control" required>
+              <option value="">Select Specialty</option>
+              <option value="Cardiology">Cardiology</option>
+              <option value="Pulmonary">Pulmonary</option>
+              <option value="Neurology">Neurology</option>
+              <option value="Orthopedics">Orthopedics</option>
+              <option value="Dental">Dental Surgery</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Preferred Date</label>
+            <input type="date" class="form-control" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Preferred Time</label>
+            <input type="time" class="form-control" required />
+          </div>
+
+          <div class="form-group full-width">
+            <label class="form-label">Symptoms / Notes</label>
+            <textarea class="form-control" rows="3" placeholder="Briefly describe your symptoms or concern..."></textarea>
+          </div>
+
+          <div class="form-group full-width">
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              <i class="fa-solid fa-paper-plane"></i> Confirm Appointment
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= DOCTORS SECTION ================= -->
+  <section class="section" id="doctors">
+    <div class="container">
+      <div class="section-header">
+        <span class="badge-tag">Our Team</span>
+        <h2 class="section-title">Experienced Physicians</h2>
+        <p class="section-desc">Meet our senior resident doctors and medical specialists.</p>
+      </div>
+
+      <div class="doctors-grid">
+        <div class="doctor-card">
+          <div class="doctor-img-wrap">
+            <img src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=500&q=80" alt="Dr. Rajesh Sharma" />
+          </div>
+          <div class="doctor-details">
+            <h4>Dr. Rajesh Sharma</h4>
+            <div class="doctor-specialty">Senior Cardiologist</div>
+            <div class="doctor-social">
+              <a href="#"><i class="fa-brands fa-linkedin-in"></i></a>
+              <a href="#"><i class="fa-brands fa-twitter"></i></a>
+            </div>
+          </div>
+        </div>
+
+        <div class="doctor-card">
+          <div class="doctor-img-wrap">
+            <img src="https://images.unsplash.com/photo-1594824813598-f2b3e8e2c45e?auto=format&fit=crop&w=500&q=80" alt="Dr. Priya Deshmukh" />
+          </div>
+          <div class="doctor-details">
+            <h4>Dr. Priya Deshmukh</h4>
+            <div class="doctor-specialty">Neurologist</div>
+            <div class="doctor-social">
+              <a href="#"><i class="fa-brands fa-linkedin-in"></i></a>
+              <a href="#"><i class="fa-brands fa-twitter"></i></a>
+            </div>
+          </div>
+        </div>
+
+        <div class="doctor-card">
+          <div class="doctor-img-wrap">
+            <img src="https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=500&q=80" alt="Dr. Vikram Patel" />
+          </div>
+          <div class="doctor-details">
+            <h4>Dr. Vikram Patel</h4>
+            <div class="doctor-specialty">Orthopedic Surgeon</div>
+            <div class="doctor-social">
+              <a href="#"><i class="fa-brands fa-linkedin-in"></i></a>
+              <a href="#"><i class="fa-brands fa-twitter"></i></a>
+            </div>
+          </div>
+        </div>
+
+        <div class="doctor-card">
+          <div class="doctor-img-wrap">
+            <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=500&q=80" alt="Dr. Ananya Roy" />
+          </div>
+          <div class="doctor-details">
+            <h4>Dr. Ananya Roy</h4>
+            <div class="doctor-specialty">Pulmonologist</div>
+            <div class="doctor-social">
+              <a href="#"><i class="fa-brands fa-linkedin-in"></i></a>
+              <a href="#"><i class="fa-brands fa-twitter"></i></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col footer-brand">
+          <h3><i class="fa-regular fa-hospital"></i> Amar Raho</h3>
+          <p>Committed to providing world-class compassionate healthcare, round-the-clock emergency support, and accessible telemedicine consultations.</p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Departments</h4>
+          <ul class="footer-links">
+            <li><a href="#services">Cardiology</a></li>
+            <li><a href="#services">Pulmonary</a></li>
+            <li><a href="#services">Neurology</a></li>
+            <li><a href="#services">Orthopedics</a></li>
+            <li><a href="#services">Pathology Lab</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Quick Links</h4>
+          <ul class="footer-links">
+            <li><a href="#home">Home</a></li>
+            <li><a href="#about">About Us</a></li>
+            <li><a href="#services">Services</a></li>
+            <li><a href="#appointment">Book Appointment</a></li>
+            <li><a href="#doctors">Our Doctors</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Contact Us</h4>
+          <div class="footer-contact-item">
+            <i class="fa-solid fa-location-dot"></i>
+            <span>Plot 404, Bypass Road, Narak-Pur</span>
+          </div>
+          <div class="footer-contact-item">
+            <i class="fa-solid fa-phone"></i>
+            <span>+91 98765-AMAR-1</span>
+          </div>
+          <div class="footer-contact-item">
+            <i class="fa-solid fa-envelope"></i>
+            <span>help@amarrahohospital.com</span>
+          </div>
+
+          <form class="newsletter-form" onsubmit="event.preventDefault(); alert('Subscribed successfully!');">
+            <input type="email" class="newsletter-input" placeholder="Enter your email" required />
+            <button type="submit" class="btn btn-primary" style="padding: 0.6rem 1.2rem;">Join</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>&copy; 2026 Amar Raho Hospital. All Rights Reserved.</p>
+        <p>Built for modern patient care and telehealth consultations.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Light Vanilla JS for mobile nav & interactive form -->
+  <script>
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const navLinks = document.getElementById('navLinks');
+    mobileMenuBtn.addEventListener('click', () => {
+      navLinks.classList.toggle('active');
+    });
+
+    // Close menu when clicking link
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', () => {
+        navLinks.classList.remove('active');
+      });
+    });
+
+    // Booking form feedback
+    document.getElementById('bookingForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      alert('Thank you! Your appointment request has been submitted successfully.');
+      e.target.reset();
+    });
+  </script>
+</body>
+</html>

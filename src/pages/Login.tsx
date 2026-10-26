@@ -51,7 +51,6 @@ export const Login: React.FC = () => {
           border-radius: 12px;
           padding: 14px 16px;
           transition: all 0.25s ease-in-out;
-          backdrop-filter: blur(8px);
         }
         .portal-feature-item:hover {
           background: rgba(255, 255, 255, 0.24) !important;
@@ -75,7 +74,6 @@ export const Login: React.FC = () => {
           background: rgba(255, 255, 255, 0.16) !important;
           border: 1px solid rgba(255, 255, 255, 0.3) !important;
           color: #ffffff !important;
-          backdrop-filter: blur(6px);
         }
         .portal-badge-patient {
           background-color: #eff6ff !important;
@@ -87,7 +85,7 @@ export const Login: React.FC = () => {
       <div className="container">
         <div className="row justify-content-center">
           <ScrollReveal animation="fadeInUp" delay="0.1s" className="col-xl-10 col-lg-11">
-            <div className="card border-0 curved-card hover-3d-card shadow-lg rounded-5 overflow-hidden">
+            <div className="card border-0 shadow-lg rounded-5 overflow-hidden">
               <div className="row g-0">
                 {/* Left Visual & Feature Panel */}
                 <div 

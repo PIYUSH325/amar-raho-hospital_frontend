@@ -757,12 +757,12 @@ h1, h2, h3, h4, h5, h6, .btn, .nav-link, .badge {
 
 /* 3D Hover Elevation Cards */
 .hover-3d-card {
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .hover-3d-card:hover {
-    transform: translateY(-10px) rotateX(2deg) rotateY(-2deg) scale(1.02);
-    box-shadow: 0 30px 60px -15px rgba(37, 99, 235, 0.25) !important;
+    transform: translateY(-6px);
+    box-shadow: 0 20px 40px -15px rgba(37, 99, 235, 0.25) !important;
 }
 
 /* Smooth Scrollbar Customization */
