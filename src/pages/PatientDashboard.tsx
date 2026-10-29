@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { Appointment, PatientProfile, MedicalRecord, Prescription, DietPlanTask } from '../types';
@@ -59,7 +60,6 @@ export const PatientDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [errorToast, setErrorToast] = useState<string | null>(null);
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
   const [chatPartnerId, setChatPartnerId] = useState(''); // Selected Doctor ID
 
 

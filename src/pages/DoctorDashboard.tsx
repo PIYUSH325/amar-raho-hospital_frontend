@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { Appointment, DoctorProfile, PatientProfile, MedicalRecord, Prescription, DietPlanTask } from '../types';
@@ -25,7 +26,6 @@ export const DoctorDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'today' | 'appointments' | 'history' | 'profile' | 'nutrition' | 'fitness' | 'general' | 'chats'>('today');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [currentDate, setCurrentDate] = useState(new Date());
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
   const location = useLocation();
 
   useEffect(() => {

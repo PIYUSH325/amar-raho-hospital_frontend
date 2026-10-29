@@ -3,7 +3,12 @@ import { AppointmentData, ContactData } from '../types';
 
 const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 const defaultHost = isLocal ? 'http://localhost:5001/api' : 'https://amar-raho-hospital-backend.onrender.com/api';
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || defaultHost;
+
+const envUrl = import.meta.env.VITE_API_BASE_URL;
+const isValidEnvUrl = envUrl && !envUrl.includes('railway.app') && !envUrl.includes('localhost:5001');
+
+export const API_BASE_URL = (isValidEnvUrl ? envUrl : defaultHost).replace(/\/+$/, '');
+export const BASE_SERVER_URL = API_BASE_URL.replace(/\/api$/, '');
 
 export const submitAppointment = async (data: AppointmentData): Promise<any> => {
   try {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../services/api';
 import EmojiPicker, { EmojiClickData, EmojiStyle } from 'emoji-picker-react';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
@@ -94,8 +95,6 @@ export const LiveChatBox: React.FC<LiveChatBoxProps> = ({
   const localStreamRef = useRef<MediaStream | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const iceCandidatesQueue = useRef<any[]>([]);
-
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; 
 
   // Determine the unique room ID based on user roles
   const getRoomId = useCallback(() => {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import PageHeader from '../components/PageHeader';
+import { API_BASE_URL, BASE_SERVER_URL } from '../services/api';
 
 interface HospitalPolicyItem {
   _id: string;
@@ -27,12 +28,7 @@ export const Policies: React.FC = () => {
   const fetchPolicies = async () => {
     try {
       setLoading(true);
-      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const defaultHost = isLocal ? 'http://localhost:5001/api' : 'https://amar-raho-hospital-backend.onrender.com/api';
-      const rawApiUrl = import.meta.env.VITE_API_BASE_URL || defaultHost;
-      const cleanBase = rawApiUrl.replace('/api', '');
-
-      const res = await axios.get(`${cleanBase}/api/ai/policies`);
+      const res = await axios.get(`${API_BASE_URL}/ai/policies`);
       if (res.data?.success) {
         setPolicies(res.data.data || []);
       }
@@ -139,11 +135,7 @@ export const Policies: React.FC = () => {
             <div className="row g-4">
               {filteredPolicies.map((policy) => {
                 const isExpanded = expandedPolicyId === policy._id;
-                const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                const defaultHost = isLocal ? 'http://localhost:5001' : 'https://amar-raho-hospital-backend.onrender.com';
-                const rawApiUrl = import.meta.env.VITE_API_BASE_URL || defaultHost;
-                const baseUrl = rawApiUrl.replace('/api', '');
-                const pdfLink = `${baseUrl}${policy.fileUrl}`;
+                const pdfLink = `${BASE_SERVER_URL}${policy.fileUrl}`;
 
                 return (
                   <div key={policy._id} className="col-lg-6">

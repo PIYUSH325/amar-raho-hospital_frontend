@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
+import { API_BASE_URL } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { User, Hospital, Department } from '../types';
 
 interface PatientListItem {
@@ -98,8 +100,6 @@ export const AdminDashboard: React.FC = () => {
   // Patient Profile Edit Modal state
   const [editingPatient, setEditingPatient] = useState<PatientListItem | null>(null);
   const [patForm, setPatForm] = useState({ mobile: '', age: '', gender: '', bloodGroup: '', address: '', emergencyContact: '' });
-
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
 
   const triggerToast = (type: 'success' | 'danger', text: string) => {
     setToast({ type, text });

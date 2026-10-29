@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../services/api';
 
 export const HospitalAIChatbot: React.FC = () => {
   const location = useLocation();
@@ -32,8 +33,7 @@ export const HospitalAIChatbot: React.FC = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const apiUrl = import.meta.env.VITE_API_BASE_URL;
-        const res = await axios.get(`${apiUrl}/ai/settings`);
+        const res = await axios.get(`${API_BASE_URL}/ai/settings`);
         if (res.data && res.data.data) {
           setAiConfig(res.data.data);
           // If the user hasn't typed anything yet, refresh the initial greeting
@@ -220,14 +220,9 @@ export const HospitalAIChatbot: React.FC = () => {
     setLoading(true);
 
     try {
-      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const defaultHost = isLocal ? 'http://localhost:5001/api' : 'https://amar-raho-hospital-backend.onrender.com/api';
-      const rawApiUrl = import.meta.env.VITE_API_BASE_URL || defaultHost;
-      const cleanBase = rawApiUrl.replace('/api', '');
-
       const token = localStorage.getItem('hospital_token');
       const res = await axios.post(
-        `${cleanBase}/api/public/hospital-chat`, 
+        `${API_BASE_URL}/public/hospital-chat`, 
         {
           message: queryText,
           history: historyPayload

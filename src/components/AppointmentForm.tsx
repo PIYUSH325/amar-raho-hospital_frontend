@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ScrollReveal from './ScrollReveal';
-import { submitAppointment } from '../services/api';
+import { submitAppointment, API_BASE_URL } from '../services/api';
 import { AppointmentData } from '../types';
 import { useAuth } from '../context/AuthContext';
 
@@ -19,10 +19,6 @@ export const AppointmentForm: React.FC = () => {
 
   const [doctorsList, setDoctorsList] = useState<any[]>([]);
   const { user } = useAuth();
-  
-  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  const defaultHost = isLocal ? 'http://localhost:5001/api' : 'https://amar-raho-hospital-backend.onrender.com/api';
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || defaultHost;
 
   // Fetch verified doctors dynamically from the backend database
   useEffect(() => {
