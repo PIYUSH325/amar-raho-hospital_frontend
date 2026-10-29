@@ -221,8 +221,8 @@ export const HospitalAIChatbot: React.FC = () => {
 
     try {
       const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const defaultHost = isLocal ? 'http://localhost:5001/api' : `http://${window.location.hostname}:5001/api`;
-      const rawApiUrl = isLocal ? 'http://localhost:5001/api' : (import.meta.env.VITE_API_BASE_URL || defaultHost);
+      const defaultHost = isLocal ? 'http://localhost:5001/api' : 'https://amar-raho-hospital-backend.onrender.com/api';
+      const rawApiUrl = import.meta.env.VITE_API_BASE_URL || defaultHost;
       const cleanBase = rawApiUrl.replace('/api', '');
 
       const token = localStorage.getItem('hospital_token');

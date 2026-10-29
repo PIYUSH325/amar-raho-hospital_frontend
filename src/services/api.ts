@@ -2,8 +2,8 @@ import axios from 'axios';
 import { AppointmentData, ContactData } from '../types';
 
 const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const defaultHost = typeof window !== 'undefined' ? `http://${window.location.hostname}:5001/api` : 'http://localhost:5001/api';
-export const API_BASE_URL = isLocal ? 'http://localhost:5001/api' : (import.meta.env.VITE_API_BASE_URL || defaultHost);
+const defaultHost = isLocal ? 'http://localhost:5001/api' : 'https://amar-raho-hospital-backend.onrender.com/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || defaultHost;
 
 export const submitAppointment = async (data: AppointmentData): Promise<any> => {
   try {

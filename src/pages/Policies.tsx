@@ -28,8 +28,8 @@ export const Policies: React.FC = () => {
     try {
       setLoading(true);
       const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const defaultHost = isLocal ? 'http://localhost:5001/api' : `http://${window.location.hostname}:5001/api`;
-      const rawApiUrl = isLocal ? 'http://localhost:5001/api' : (import.meta.env.VITE_API_BASE_URL || defaultHost);
+      const defaultHost = isLocal ? 'http://localhost:5001/api' : 'https://amar-raho-hospital-backend.onrender.com/api';
+      const rawApiUrl = import.meta.env.VITE_API_BASE_URL || defaultHost;
       const cleanBase = rawApiUrl.replace('/api', '');
 
       const res = await axios.get(`${cleanBase}/api/ai/policies`);
@@ -140,8 +140,8 @@ export const Policies: React.FC = () => {
               {filteredPolicies.map((policy) => {
                 const isExpanded = expandedPolicyId === policy._id;
                 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                const defaultHost = isLocal ? 'http://localhost:5001' : `http://${window.location.hostname}:5001`;
-                const rawApiUrl = isLocal ? 'http://localhost:5001' : (import.meta.env.VITE_API_BASE_URL || defaultHost);
+                const defaultHost = isLocal ? 'http://localhost:5001' : 'https://amar-raho-hospital-backend.onrender.com';
+                const rawApiUrl = import.meta.env.VITE_API_BASE_URL || defaultHost;
                 const baseUrl = rawApiUrl.replace('/api', '');
                 const pdfLink = `${baseUrl}${policy.fileUrl}`;
 
